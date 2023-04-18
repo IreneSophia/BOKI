@@ -7,16 +7,19 @@ setwd("/home/iplank/Documents/ML_BOKI/CentraXX")
 
 # load raw data
 # columns of Interest: internalStudyMemberID, name2, code, value, section, (valueIndex), numericValue
-df = read_delim("BOKI_17042023.csv", show_col_types = F, locale = locale(encoding = "ISO-8859-1")) %>%
+ls.fl = setdiff(list.files(pattern = "BOKI_.*.csv"), "BOKI_centraXX.csv")
+df = ls.fl %>%
+  map_df(~read_delim(., show_col_types = F, locale = locale(encoding = "ISO-8859-1"))) %>%
   select(internalStudyMemberID, name2, code, value, section, numericValue) %>%
   filter(internalStudyMemberID != "NEVIA_test" & !is.na(name2) & substr(internalStudyMemberID,1,10) != "BOKI_Pilot") %>%
   rename("questionnaire" = "name2", 
          "item" = "code", 
          "SID" = "internalStudyMemberID") %>%
   mutate(
-    value = str_replace(value, ",", ";")
+    value = str_replace(value, ",", ";"),
+    questionnaire = str_replace(questionnaire, "PSY_BOKI_DEMO_Neu", "PSY_BOKI_DEMO")
   ) %>%
-  group_by(SID)
+  group_by(SID) %>% distinct()
 
 ## preprocess each questionnaire separately:
 
@@ -69,8 +72,8 @@ df.cft = df %>% filter(questionnaire == "PSY_BOKI_CFT") %>%
     CFT_total = sum(score)
   )
 
-# PSY_BOKI_DEMO_Neu
-df.demo = df %>% filter(questionnaire == "PSY_BOKI_DEMO_Neu") %>%
+# PSY_BOKI_DEMO_Neu & PSY_BOKI_DEMO
+df.demo = df %>% filter(questionnaire == "PSY_BOKI_DEMO") %>%
   mutate(
     item = recode(item, 
                   `PSY_PIPS_Demo_Alter/age` = "age",
@@ -105,17 +108,10 @@ df.demo = df %>% filter(questionnaire == "PSY_BOKI_DEMO_Neu") %>%
     )
   )
 
-df.demo[!is.na(df.demo$numericValue),]$value = as.character(df.demo[!is.na(df.demo$numericValue),]$numericValue)
-
 df.demo = df.demo %>%
   group_by(SID) %>% select(SID, item, value) %>%
-  pivot_wider(names_from = item, values_from = value) %>%
-  mutate(
-    therapy = case_when(
-      therapy == 1 ~ 1,
-      therapy == 2 ~ 0
-    )
-  )
+  distinct() %>%
+  pivot_wider(names_from = item, values_from = value)
 
 # PSY_BOKI_MWT
 df.mwt = df %>% filter(questionnaire == "PSY_BOKI_MWT") %>%
