@@ -4,7 +4,8 @@
 # personal synchrony. It is an adaptation of a script written by Jana Koehler, 
 # published in https://github.com/jckoe/MLASS-study. 
 
-# In MEA, 
+# BPD participants always sit on the right, CTR on the left. In MEA, the order
+# of the ROI is: CTR_head, CTR_body, BPD_head, BPD_body
 
 # clean workspace
 rm(list=ls())
@@ -14,10 +15,6 @@ library(tidyverse)
 library(rMEA)
 library(data.table)    # setDT
 library(moments)       # kurtosis, skewness
-#library('writexl')
-#library('readxl')
-#library('dplyr')
-#library('stringr')
 
 # set path to MEA files
 dt.path = "/home/emba/Documents/ML_BOKI/Data_MEA"
