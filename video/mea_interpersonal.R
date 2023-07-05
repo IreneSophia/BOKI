@@ -15,10 +15,31 @@ library(tidyverse)
 library(rMEA)
 library(data.table)    # setDT
 library(moments)       # kurtosis, skewness
+library(filesstrings)   # file.move
 
 # set path to MEA files
 dt.path = "/home/emba/Documents/ML_BOKI/Data_MEA"
 setwd(dt.path)
+
+# Check dyad data ---------------------------------------------------------
+
+# lists all relevant IDs
+ls.IDs = list.files(path = dt.path, pattern = "BOKI_.*\\.txt")
+
+# check if there are dyads where one or more files are missing
+incomplete = c()
+for (d in unique(substr(ls.IDs, 1, 7))) {
+  idx = which(substr(ls.IDs, 1, 7) == d)
+  if (length(idx) != 2) {
+    warning(sprintf('Dyad %s does not have 2 files', d))
+    incomplete = c(incomplete, ls.IDs[idx])
+  }
+}
+
+# move this dyad to another folder
+for (i in incomplete) { 
+  file.move(paste0(dt.path, "/", i), paste0(dt.path, "/incomplete/"))
+}
 
 # Read in data ------------------------------------------------------------
 
@@ -177,7 +198,7 @@ df.MEAmov_NM = df.mov %>%
     ID = paste0("BOKI_", dyad, "_", speaker)
   ) %>% relocate(ID) %>%
   pivot_wider(names_from = c(task, ROI), values_from = movement)
-write.csv(df.MEAmovb_NM, "movementquantity.csv")
+write.csv(df.MEAmov_NM, "movementquantity.csv")
 
 # clean workspace
 rm(list = setdiff(ls(), c("df.ccf", "mea.ccf", "df.MEAmov_NM", "df.MEAhead_NM", "df.MEAbody_NM")))
