@@ -18,7 +18,7 @@ library(moments)       # kurtosis, skewness
 
 # set path to MEA files
 dt.path = "/home/emba/Documents/ML_BOKI/Data_MEA"
-
+setwd(dt.path)
 
 # Read in data ------------------------------------------------------------
 
@@ -178,3 +178,10 @@ df.MEAmov_NM = df.mov %>%
   ) %>% relocate(ID) %>%
   pivot_wider(names_from = c(task, ROI), values_from = movement)
 write.csv(df.MEAmovb_NM, "movementquantity.csv")
+
+# clean workspace
+rm(list = setdiff(ls(), c("df.ccf", "mea.ccf", "df.MEAmov_NM", "df.MEAhead_NM", "df.MEAbody_NM")))
+
+# Save workspace ----------------------------------------------------------
+
+save.image(file = "MEA.Rdata")
