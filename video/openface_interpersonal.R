@@ -104,24 +104,16 @@ if (length(outlier) > 0) {ls.clean = ls[-outlier]} else {ls.clean = ls}
 df = bind_rows(ls.clean, .id = "ID") %>%
   separate(col = ID, into = c("dyad1", "dyad2", "task", "speaker"), remove = F) %>%
   mutate(dyad = paste(dyad1, dyad2, sep = "_"),
-         speaker = recode_factor(speaker, "R" = "BPD", "L" = "CTR")) %>%
+         speaker = recode_factor(speaker, "R" = "BPD", "L" = "CTR"),
+         ID = paste0(dyad, "_", speaker)) %>%
   select(-dyad1, -dyad2) %>%
   relocate(ID, dyad)
 
 # clean workspace
-saveRDS(df, file = "df_OpenFace.RDS")
 rm(list = setdiff(ls(), "df"))
 
-# Inspect AUs -------------------------------------------------------------
-
-# not all AUs are captured with the same accuracy. Here, we check this and
-# choose which AUs should be excluded from further analysis
-ls.AUs = str_subset(names(df), "AU.*_r")
-
-# EXCLUDE STUFF? 
-
-# add position indices
-ls.AUs = c(ls.AUs, str_subset(names(df), "pose_R*"))
+# list of AUs
+ls.AUs = str_subset(names(df), "AU.*_r|pose_R*")
 
 # Time series synchronisation ---------------------------------------------
 
@@ -164,7 +156,7 @@ for (i in unique(df$dyad)){
   if (nrow(df.sel) > 0) { 
     
     # loop over AUs
-    for (j in str_subset(names(df.sel), "AU.*_r|pose_R*")){ 
+    for (j in ls.AUs){ 
       
       # prepare fake MEA components
       s1 = df.sel[df.sel$speaker == "CTR", j] # AU for left CTR participant
@@ -214,7 +206,7 @@ for (i in unique(df$dyad)){
   if (nrow(df.sel) > 0) { 
     
     # loop over AUs
-    for (j in str_subset(names(df.sel), "AU.*_r|pose_R*")){ 
+    for (j in ls.AUs){ 
       
       # prepare fake MEA components
       s1 = df.sel[df.sel$speaker == "CTR", j] # AU for left CTR participant
@@ -261,22 +253,62 @@ for (i in unique(df$dyad)){
 }
 
 # clean workspace
-saveRDS(df.sync, file = "df_OpenFaceSync.RDS")
 rm(list = setdiff(ls(), c("df", "df.sync")))
 
-# calculate summary statistics
-df.agg = df.sync %>%
+# check missing values for each AU and pose
+df.AUs = df.sync %>%
   group_by(dyad, speaker, input, task) %>%
   summarise(
-    sync.min  = min(sync, na.rm = T),
-    sync.max  = max(sync, na.rm = T),
-    sync.sd   = sd(sync, na.rm = T),
-    sync.mean = mean(sync, na.rm = T),
-    sync.md   = median(sync, na.rm = T),
-    sync.kurt = kurtosis(sync, na.rm = T),
-    sync.skew = skewness(sync, na.rm = T)
-  )
+    missing = sum(is.na(sync)) / n()
+  ) %>%
+  group_by(input) %>%
+  summarise(
+    missing = max(missing)
+  ) %>% 
+  filter(missing < 0.5)
+ls.AUs = unique(df.AUs$input) # list of all AUs that should be included
+
+# calculate summary statistics
+df.OFsync = df.sync %>%
+  group_by(dyad, speaker, input, task) %>%
+  summarise(
+    OF.sync.min  = min(sync, na.rm = T),
+    OF.sync.max  = max(sync, na.rm = T),
+    OF.sync.sd   = sd(sync, na.rm = T),
+    OF.sync.mean = mean(sync, na.rm = T),
+    OF.sync.md   = median(sync, na.rm = T),
+    OF.sync.kurt = kurtosis(sync, na.rm = T),
+    OF.sync.skew = skewness(sync, na.rm = T)
+  ) %>%
+  mutate(
+    ID = paste0(dyad, "_", speaker)
+  ) %>%
+  relocate(ID) %>%
+  filter(input %in% ls.AUs) # only keep AUs where no participant was missing more than 50% 
+ls.features = str_subset(names(df.OFsync), pattern = "OF.sync.*")
+
+df.OFsync_NM = df.OFsync %>%
+  pivot_wider(names_from = c(task, input), values_from = all_of(ls.features))
+
+write.csv(df.OFsync_NM, "FE_syncentrain.csv")
+
+# clean workspace
+rm(list = setdiff(ls(), c("df", "df.sync", "df.OFsync_NM")))
 
 # Facial expressiveness ---------------------------------------------------
 
+# operationalised as the mean intensity of all included AUs per task
+df.OFexp_NM = df %>%
+  select(ID, dyad, task, speaker, frame, matches("AU.*r")) %>%
+  pivot_longer(names_to = "input", values_to = "exp", cols = matches("AU.*r")) %>%
+  group_by(ID, dyad, task, speaker) %>%
+  summarise(
+    exp = mean(exp, na.rm = T)
+  ) %>%
+  pivot_wider(names_from = task, values_from = exp, names_prefix = "exp_")
 
+write.csv(df.OFexp_NM, "FE_intensity.csv")
+
+# Save workspace ----------------------------------------------------------
+
+save.image(file = "OpenFace.Rdata")
