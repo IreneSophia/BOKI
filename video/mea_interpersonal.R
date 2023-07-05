@@ -144,10 +144,37 @@ df.ccf = bind_rows(ls.ccf, .id = "ID") %>%
     sync.skew = skewness(sync, na.rm = T)
   )
 
+# create and save NM data frame for head
+df.MEAhead_NM = df.ccf %>%
+  mutate(
+    ID = paste0(dyad, "_", speaker)
+  ) %>% relocate(ID) %>%
+  filter(ROI == "head") %>%
+  pivot_wider(names_from = task, values_from = matches("sync.*"))
+write.csv(df.MEAhead_NM, "mea_ccf_head.csv")
+
+# create and save NM data frame for body
+df.MEAbody_NM = df.ccf %>%
+  mutate(
+    ID = paste0(dyad, "_", speaker)
+  ) %>% relocate(ID) %>%
+  filter(ROI == "body") %>%
+  pivot_wider(names_from = task, values_from = matches("sync.*"))
+write.csv(df.MEAbody_NM, "mea_ccf_body.csv")
+
 # Movement quantity -------------------------------------------------------
 
+# extract information from mea object
 df.mov = summary(mea.ccf)[, c("CTR_%", "BPD_%")] %>%
   rownames_to_column(var = "ID") %>%
   separate(ID, c("ROI", "dyad", "task")) %>%
   rename("BPD" = "BPD_%", "CTR" = "CTR_%") %>%
   pivot_longer(cols = c("BPD", "CTR"), names_to = "speaker", values_to = "movement")
+
+# create and save NM data frame for movement
+df.MEAmov_NM = df.mov %>%
+  mutate(
+    ID = paste0("BOKI_", dyad, "_", speaker)
+  ) %>% relocate(ID) %>%
+  pivot_wider(names_from = c(task, ROI), values_from = movement)
+write.csv(df.MEAmovb_NM, "movementquantity.csv")
