@@ -8,7 +8,7 @@
 # of the ROI is: CTR_head, CTR_body, BPD_head, BPD_body
 
 # clean workspace
-rm(list=ls())
+rm(list = ls())
 
 # load libraries
 library(tidyverse)
