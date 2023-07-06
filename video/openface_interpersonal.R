@@ -20,6 +20,24 @@ setwd(dt.path)
 # set options
 options(datatable.fread.datatable = F)
 
+# initialize function to create a fake MEA object out of two vectors (c) ISP
+# Input: 
+#     * s1, s2: numeric vectors containing the values to be correlated
+#     * sampRate: sampling rate per second
+#     * s1Name, s2Name: name for the values to be correlated, default is "s1Name" and "s2Name"
+# Output:
+#     * fake MEA object that pretends to be a MEA object
+#
+fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
+  mea = structure(list(all_01_01 = structure(list(MEA = structure(list(
+    s1Name = s1, s2Name = s2), row.names = c(NA, -length(s1)), class = "data.frame"), 
+    ccf = NULL, ccfRes = NULL), id = "01", session = "01", group = "all", sampRate = sampRate, 
+    filter = "raw", ccf = "", s1Name = s1Name, s2Name = s2Name, uid = "all_01_01", 
+    class = c("MEA","list"))), class = "MEAlist", nId = 1L, n = 1L, groups = "all", sampRate = sampRate, 
+    filter = "raw", s1Name = s1Name, s2Name = s2Name, ccf = "")
+  return(mea)
+}
+
 # Read in data ------------------------------------------------------------
 
 # lists all relevant IDs
@@ -110,7 +128,7 @@ df = bind_rows(ls.clean, .id = "ID") %>%
   relocate(ID, dyad)
 
 # clean workspace
-rm(list = setdiff(ls(), "df"))
+rm(list = setdiff(ls(), c("df", "fakeMEA")))
 
 # list of AUs
 ls.AUs = str_subset(names(df), "AU.*_r|pose_R*")
@@ -118,30 +136,12 @@ ls.AUs = str_subset(names(df), "AU.*_r|pose_R*")
 # Time series synchronisation ---------------------------------------------
 
 # Steps: 
-# 1) create fake MEA object
+# 1) create fake MEA object using the fakeMEA function
 # 2) calculate ccf according to rMEA
 
-# 1) initialize function to create a fake MEA object out of two vectors
-# Input: 
-#     * s1, s2: numeric vectors containing the values to be correlated
-#     * sampRate: sampling rate per second
-#     * s1Name, s2Name: name for the values to be correlated, default is "s1Name" and "s2Name"
-# Output:
-#     * fake MEA object that pretends to be a MEA object
-#
-fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
-  mea = structure(list(all_01_01 = structure(list(MEA = structure(list(
-    s1Name = s1, s2Name = s2), row.names = c(NA, -length(s1)), class = "data.frame"), 
-    ccf = NULL, ccfRes = NULL), id = "01", session = "01", group = "all", sampRate = sampRate, 
-    filter = "raw", ccf = "", s1Name = s1Name, s2Name = s2Name, uid = "all_01_01", 
-    class = c("MEA","list"))), class = "MEAlist", nId = 1L, n = 1L, groups = "all", sampRate = sampRate, 
-    filter = "raw", s1Name = s1Name, s2Name = s2Name, ccf = "")
-  return(mea)
-}
-
-# 2) calculate ccf according to rMEA
+# loop through all dyads
 sampRate = 30
-df.sync = data.frame()
+df.AU.sync = data.frame()
 for (i in unique(df$dyad)){ 
   
   # initialise heatmaps
@@ -150,7 +150,9 @@ for (i in unique(df$dyad)){
   ## HOBBIES
   
   # grab only relevant portions of df
-  df.sel = df[df$dyad == i & df$task == "H",] 
+  df.sel = df %>%
+    filter(dyad == i & task == "H") %>%
+    arrange(ID, dyad, task, speaker, frame)
   
   # check if data frame is present
   if (nrow(df.sel) > 0) { 
@@ -179,8 +181,8 @@ for (i in unique(df$dyad)){
       title(main = paste("H", j, sep = "_")) # alternative title
       
       # peak picking
-      CTR = apply(df.ccf[,c(1:60)], 1, max, na.rm =T ) 
-      BPD = apply(df.ccf[,c(62:121)], 1, max, na.rm =T )
+      CTR = apply(df.ccf[,1:floor(ncol(df.ccf)/2)], 1, max, na.rm =T ) 
+      BPD = apply(df.ccf[,(floor(ncol(df.ccf)/2)+2):ncol(df.ccf)], 1, max, na.rm =T )
       df.dyad = as.data.frame(cbind(CTR,BPD)) %>%
         rownames_to_column(var = "window") %>%
         mutate(
@@ -193,14 +195,16 @@ for (i in unique(df$dyad)){
           sync = if_else(sync != -Inf & !is.na(sync), sync, NA)
         )
       
-      df.sync = rbind(df.sync, df.dyad)
+      df.AU.sync = rbind(df.AU.sync, df.dyad)
     }
   }
   
   ## MEALPLANNING
   
   # grab only relevant portions of df
-  df.sel = df[df$dyad == i & df$task == "M",] 
+  df.sel = df %>%
+    filter(dyad == i & task == "M") %>%
+    arrange(ID, dyad, task, speaker, frame)
   
   # check if data frame is present
   if (nrow(df.sel) > 0) { 
@@ -229,8 +233,8 @@ for (i in unique(df$dyad)){
       title(main = paste("H", j, sep = "_")) # alternative title
       
       # peak picking
-      CTR = apply(df.ccf[,c(1:60)], 1, max, na.rm =T ) 
-      BPD = apply(df.ccf[,c(62:121)], 1, max, na.rm =T )
+      CTR = apply(df.ccf[,1:floor(ncol(df.ccf)/2)], 1, max, na.rm =T ) 
+      BPD = apply(df.ccf[,(floor(ncol(df.ccf)/2)+2):ncol(df.ccf)], 1, max, na.rm =T )
       df.dyad = as.data.frame(cbind(CTR,BPD)) %>%
         rownames_to_column(var = "window") %>%
         mutate(
@@ -243,7 +247,7 @@ for (i in unique(df$dyad)){
           sync = if_else(sync != -Inf & !is.na(sync), sync, NA)
         )
       
-      df.sync = rbind(df.sync, df.dyad)
+      df.AU.sync = rbind(df.AU.sync, df.dyad)
     }
   }
   
@@ -253,10 +257,10 @@ for (i in unique(df$dyad)){
 }
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.sync")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "fakeMEA")))
 
 # check missing values for each AU and pose
-df.AUs = df.sync %>%
+df.AUs = df.AU.sync %>%
   group_by(dyad, speaker, input, task) %>%
   summarise(
     missing = sum(is.na(sync)) / n()
@@ -269,45 +273,187 @@ df.AUs = df.sync %>%
 ls.AUs = unique(df.AUs$input) # list of all AUs that should be included
 
 # calculate summary statistics
-df.OFsync = df.sync %>%
+df.AU.sync_NM = df.AU.sync %>%
   group_by(dyad, speaker, input, task) %>%
+  filter(input %in% ls.AUs) %>% # only keep AUs where no participant was missing more than 50% 
+  pivot_wider(names_from = input, values_from = sync, names_prefix = "AU.sync.", names_sep = ".") %>%
+  rename_with(~ gsub("_", "", .), where(is.numeric)) %>%
+  summarise(across(where(is.numeric), 
+                         .fns = 
+                           list(min  = ~min(.,na.rm = T), 
+                                max  = ~max(.,na.rm = T), 
+                                md   = ~median(.,na.rm = T), 
+                                mean = ~mean(.,na.rm = T), 
+                                sd   = ~sd(.,na.rm = T), 
+                                kurt = ~kurtosis(.,na.rm = T), 
+                                skew = ~skewness(.,na.rm = T)
+                                ))) %>%
+  pivot_wider(names_from = task, values_from = where(is.numeric)) %>%
+  mutate(
+    ID = paste0(dyad, "_", speaker)
+  ) %>%
+  relocate(ID)
+
+# save to csv file
+write.csv(df.AU.sync_NM, "FE_syncentrain.csv")
+
+# clean workspace
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "fakeMEA")))
+
+# Facial expressiveness ---------------------------------------------------
+
+# operationalised as the mean intensity of all included AUs
+df.exp = df %>%
+  select(ID, dyad, task, speaker, frame, matches("AU.*r")) %>%
+  pivot_longer(names_to = "input", values_to = "exp", cols = matches("AU.*r")) %>%
+  group_by(ID, dyad, task, speaker, frame) %>%
   summarise(
-    OF.sync.min  = min(sync, na.rm = T),
-    OF.sync.max  = max(sync, na.rm = T),
-    OF.sync.sd   = sd(sync, na.rm = T),
-    OF.sync.mean = mean(sync, na.rm = T),
-    OF.sync.md   = median(sync, na.rm = T),
-    OF.sync.kurt = kurtosis(sync, na.rm = T),
-    OF.sync.skew = skewness(sync, na.rm = T)
+    exp = mean(exp, na.rm = T)
+  )
+
+# compute synchrony of facial expressiveness by looping through dyads
+df.exp.sync = data.frame()
+sampRate = 30
+for (i in unique(df.exp$dyad)){ 
+  
+  # initialise heatmaps
+  pdf(paste0("pics/", i, "_FEsync.pdf")) 
+  
+  ## HOBBIES
+  
+  # grab only relevant portions of df
+  df.sel = df.exp %>%
+    filter(dyad == i & task == "H") %>%
+    arrange(ID, dyad, task, speaker, frame)
+  
+  # check if data frame is present
+  if (nrow(df.sel) > 0) { 
+      
+    # prepare fake MEA components
+    s1 = df.sel[df.sel$speaker == "CTR",]$exp # exp for left CTR participant
+    s2 = df.sel[df.sel$speaker == "BPD",]$exp # exp for right BPD participant
+    
+    # create fake MEA object
+    mea = fakeMEA(s1, s2, sampRate) 
+    
+    # time lagged windowed cross-correlations
+    mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
+    names(mea) = paste(i, "H_exp", sep = "_")
+    
+    # extract matrix with all ccf values over all lags and windows 
+    df.ccf = mea[[1]][["ccf"]] 
+    
+    # configure heatmap
+    par(col.main='white')                  # set plot title to white
+    heatmap = MEAheatmap(mea[[1]])
+    par(col.main='black')                  # set plot title back to black
+    title(main = paste("exp_H", sep = "_")) # alternative title
+    
+    # peak picking
+    CTR = apply(df.ccf[,1:floor(ncol(df.ccf)/2)], 1, max, na.rm =T ) 
+    BPD = apply(df.ccf[,(floor(ncol(df.ccf)/2)+2):ncol(df.ccf)], 1, max, na.rm =T )
+    df.dyad = as.data.frame(cbind(CTR,BPD)) %>%
+      rownames_to_column(var = "window") %>%
+      mutate(
+        dyad = i,
+        task = "H"
+      ) %>%
+      pivot_longer(cols = c("CTR", "BPD"), names_to = "speaker", values_to = "exp.sync") %>%
+      mutate(
+        exp.sync = if_else(exp.sync != -Inf & !is.na(exp.sync), exp.sync, NA)
+      )
+    
+    df.exp.sync = rbind(df.exp.sync, df.dyad)
+  }
+  
+  ## MEALPLANNING
+
+  # grab only relevant portions of df
+  df.sel = df.exp %>%
+    filter(dyad == i & task == "M") %>%
+    arrange(ID, dyad, task, speaker, frame)
+  
+  # check if data frame is present
+  if (nrow(df.sel) > 0) { 
+    
+    # prepare fake MEA components
+    s1 = df.sel[df.sel$speaker == "CTR",]$exp # exp for left CTR participant
+    s2 = df.sel[df.sel$speaker == "BPD",]$exp # exp for right BPD participant
+    
+    # create fake MEA object
+    mea = fakeMEA(s1, s2, sampRate) 
+    
+    # time lagged windowed cross-correlations
+    mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
+    names(mea) = paste(i, "M_exp", sep = "_")
+    
+    # extract matrix with all ccf values over all lags and windows 
+    df.ccf = mea[[1]][["ccf"]] 
+    
+    # configure heatmap
+    par(col.main='white')                  # set plot title to white
+    heatmap = MEAheatmap(mea[[1]])
+    par(col.main='black')                  # set plot title back to black
+    title(main = paste("exp_M", sep = "_")) # alternative title
+    
+    # peak picking
+    CTR = apply(df.ccf[,1:floor(ncol(df.ccf)/2)], 1, max, na.rm =T ) 
+    BPD = apply(df.ccf[,(floor(ncol(df.ccf)/2)+2):ncol(df.ccf)], 1, max, na.rm =T )
+    df.dyad = as.data.frame(cbind(CTR,BPD)) %>%
+      rownames_to_column(var = "window") %>%
+      mutate(
+        dyad = i,
+        task = "M"
+      ) %>%
+      pivot_longer(cols = c("CTR", "BPD"), names_to = "speaker", values_to = "exp.sync") %>%
+      mutate(
+        exp.sync = if_else(exp.sync != -Inf & !is.na(exp.sync), exp.sync, NA)
+      )
+    
+    df.exp.sync = rbind(df.exp.sync, df.dyad)
+  }
+  
+  dev.off()
+  # show progress
+  print(paste(i, "done"))
+}
+
+# calculate summary statistics
+df.exp.sync_NM = df.exp.sync %>%
+  group_by(dyad, speaker, task) %>%
+  summarise(
+    exp.sync_min  = min(exp.sync, na.rm = T),
+    exp.sync_max  = max(exp.sync, na.rm = T),
+    exp.sync_sd   = sd(exp.sync, na.rm = T),
+    exp.sync_mean = mean(exp.sync, na.rm = T),
+    exp.sync_md   = median(exp.sync, na.rm = T),
+    exp.sync_kurt = kurtosis(exp.sync, na.rm = T),
+    exp.sync_skew = skewness(exp.sync, na.rm = T)
   ) %>%
   mutate(
     ID = paste0(dyad, "_", speaker)
   ) %>%
   relocate(ID) %>%
-  filter(input %in% ls.AUs) # only keep AUs where no participant was missing more than 50% 
-ls.features = str_subset(names(df.OFsync), pattern = "OF.sync.*")
+  pivot_wider(names_from = "task", values_from = where(is.numeric))
 
-df.OFsync_NM = df.OFsync %>%
-  pivot_wider(names_from = c(task, input), values_from = all_of(ls.features))
-
-write.csv(df.OFsync_NM, "FE_syncentrain.csv")
-
-# clean workspace
-rm(list = setdiff(ls(), c("df", "df.sync", "df.OFsync_NM")))
-
-# Facial expressiveness ---------------------------------------------------
-
-# operationalised as the mean intensity of all included AUs per task
-df.OFexp_NM = df %>%
+# full expressiveness: mean of all AUs and frames
+df.exp_NM = df %>%
   select(ID, dyad, task, speaker, frame, matches("AU.*r")) %>%
   pivot_longer(names_to = "input", values_to = "exp", cols = matches("AU.*r")) %>%
   group_by(ID, dyad, task, speaker) %>%
   summarise(
     exp = mean(exp, na.rm = T)
   ) %>%
-  pivot_wider(names_from = task, values_from = exp, names_prefix = "exp_")
+  pivot_wider(names_from = task, values_from = exp, names_prefix = "exp_mean_")
 
-write.csv(df.OFexp_NM, "FE_intensity.csv")
+# merge
+df.exp_NM = merge(df.exp_NM, df.exp.sync_NM)
+
+# save
+write.csv(df.exp_NM, "FE_intensity.csv")
+
+# clean workspace
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", "df.exp.sync", "df.exp_NM")))
 
 # Save workspace ----------------------------------------------------------
 
