@@ -15,7 +15,7 @@ library(tidyverse)
 library(rMEA)
 library(data.table)    # setDT
 library(moments)       # kurtosis, skewness
-library(filesstrings)   # file.move
+library(filesstrings)  # file.move
 
 # set path to MEA files
 dt.path = "/home/emba/Documents/ML_BOKI/Data_MEA"
@@ -134,9 +134,9 @@ ls.ccf = getCCF(mea.ccf, type = "fullMatrix")
 # peak picking
 for (i in 1:length(ls.ccf)){
   # append maximum of positive lag (s1 movement happening before s2 movement)
-  ls.ccf[[i]]$BPD = apply(ls.ccf[[i]][,152:301], 1, max, na.rm = T)
+  ls.ccf[[i]]$BPD = apply(ls.ccf[[i]][,(floor(ncol(ls.ccf[[i]])/2)+2):ncol(ls.ccf[[i]])], 1, max, na.rm = T)
   # append maximum of negative lag (s2 movement happening before s1 movement)
-  ls.ccf[[i]]$CTR = apply(ls.ccf[[i]][,1:150], 1, max, na.rm = T) 
+  ls.ccf[[i]]$CTR = apply(ls.ccf[[i]][,1:floor(ncol(ls.ccf[[i]])/2)], 1, max, na.rm = T) 
   # keep only relevant columns
   ls.ccf[[i]] = ls.ccf[[i]][,c("CTR","BPD")]
   # transpose all df in list
@@ -150,38 +150,38 @@ for (i in 1:length(ls.ccf)){
 df.ccf = bind_rows(ls.ccf, .id = "ID") %>% 
   separate(ID, c("ROI", "dyad", "task")) %>%
   rename("speaker" = "position") %>%
-  pivot_longer(cols = starts_with("w"), names_to = "window", values_to = "sync") %>%
+  pivot_longer(cols = starts_with("w"), names_to = "window", values_to = "MEA.sync") %>%
   mutate(
-    sync = if_else(sync != -Inf, sync, NA)
+    MEA.sync = if_else(MEA.sync != -Inf, MEA.sync, NA)
   ) %>% 
   group_by(dyad, speaker, ROI, task) %>%
   summarise(
-    sync.min  = min(sync, na.rm = T),
-    sync.max  = max(sync, na.rm = T),
-    sync.sd   = sd(sync, na.rm = T),
-    sync.mean = mean(sync, na.rm = T),
-    sync.md   = median(sync, na.rm = T),
-    sync.kurt = kurtosis(sync, na.rm = T),
-    sync.skew = skewness(sync, na.rm = T)
+    MEA.sync_min  = min(MEA.sync, na.rm = T),
+    MEA.sync_max  = max(MEA.sync, na.rm = T),
+    MEA.sync_sd   = sd(MEA.sync, na.rm = T),
+    MEA.sync_mean = mean(MEA.sync, na.rm = T),
+    MEA.sync_md   = median(MEA.sync, na.rm = T),
+    MEA.sync_kurt = kurtosis(MEA.sync, na.rm = T),
+    MEA.sync_skew = skewness(MEA.sync, na.rm = T)
   )
 
 # create and save NM data frame for head
-df.MEAhead_NM = df.ccf %>%
+df.MEA.head_NM = df.ccf %>%
   mutate(
     ID = paste0(dyad, "_", speaker)
   ) %>% relocate(ID) %>%
   filter(ROI == "head") %>%
-  pivot_wider(names_from = task, values_from = matches("sync.*"))
-write.csv(df.MEAhead_NM, "mea_ccf_head.csv")
+  pivot_wider(names_from = task, values_from = matches("MEA.sync.*"))
+write.csv(df.MEA.head_NM, "mea_ccf_head.csv")
 
 # create and save NM data frame for body
-df.MEAbody_NM = df.ccf %>%
+df.MEA.body_NM = df.ccf %>%
   mutate(
     ID = paste0(dyad, "_", speaker)
   ) %>% relocate(ID) %>%
   filter(ROI == "body") %>%
-  pivot_wider(names_from = task, values_from = matches("sync.*"))
-write.csv(df.MEAbody_NM, "mea_ccf_body.csv")
+  pivot_wider(names_from = task, values_from = matches("MEA.sync.*"))
+write.csv(df.MEA.body_NM, "mea_ccf_body.csv")
 
 # Movement quantity -------------------------------------------------------
 
@@ -190,18 +190,18 @@ df.mov = summary(mea.ccf)[, c("CTR_%", "BPD_%")] %>%
   rownames_to_column(var = "ID") %>%
   separate(ID, c("ROI", "dyad", "task")) %>%
   rename("BPD" = "BPD_%", "CTR" = "CTR_%") %>%
-  pivot_longer(cols = c("BPD", "CTR"), names_to = "speaker", values_to = "movement")
+  pivot_longer(cols = c("BPD", "CTR"), names_to = "speaker", values_to = "MEA.movement")
 
 # create and save NM data frame for movement
-df.MEAmov_NM = df.mov %>%
+df.MEA.mov_NM = df.mov %>%
   mutate(
     ID = paste0("BOKI_", dyad, "_", speaker)
   ) %>% relocate(ID) %>%
-  pivot_wider(names_from = c(task, ROI), values_from = movement)
-write.csv(df.MEAmov_NM, "movementquantity.csv")
+  pivot_wider(names_from = c(ROI, task), values_from = MEA.movement, names_prefix = "MEA.movement.")
+write.csv(df.MEA.mov_NM, "movementquantity.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df.ccf", "mea.ccf", "df.MEAmov_NM", "df.MEAhead_NM", "df.MEAbody_NM")))
+rm(list = setdiff(ls(), c("df.ccf", "mea.ccf", "df.MEA.mov_NM", "df.MEA.head_NM", "df.MEA.body_NM")))
 
 # Save workspace ----------------------------------------------------------
 
