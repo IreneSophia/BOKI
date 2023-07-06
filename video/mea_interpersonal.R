@@ -1,6 +1,6 @@
 # (C) Irene Sophia Plank
 # 
-# This script takes the output of Motion Energy analysis and calculates inter-
+# This script takes the output of Motion Energy analysis and calculates INTER-
 # personal synchrony. It is an adaptation of a script written by Jana Koehler, 
 # published in https://github.com/jckoe/MLASS-study. 
 
