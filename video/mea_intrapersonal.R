@@ -194,6 +194,9 @@ rm(list = setdiff(ls(), c("df.OF", "df.MEA", "fakeMEA")))
 
 # Calculate intrapersonal synchrony ---------------------------------------
 
+# create list to be filled with fakeMEA objects
+ls.mea = c()
+
 # merge both dataframes
 df = merge(df.OF, df.MEA)
 
@@ -223,6 +226,9 @@ for (i in unique(df$ID)){
     # time lagged windowed cross-correlations
     mea = MEAccf(mea,lagSec = 5, winSec = 30, incSec = 15, r2Z = T, ABS = T) 
     names(mea) = paste(i, "H", sep = "_")
+    
+    # add object to fakeMEA list
+    ls.mea = c(ls.mea, mea)
     
     # extract matrix with all ccf values over all lags and windows 
     df.ccf = mea[[1]][["ccf"]] 
@@ -269,6 +275,9 @@ for (i in unique(df$ID)){
     # time lagged windowed cross-correlations
     mea = MEAccf(mea,lagSec = 5, winSec = 30, incSec = 15, r2Z = T, ABS = T) 
     names(mea) = paste(i, "M", sep = "_")
+    
+    # add object to fakeMEA list
+    ls.mea = c(ls.mea, mea)
     
     # extract matrix with all ccf values over all lags and windows 
     df.ccf = mea[[1]][["ccf"]] 
@@ -323,9 +332,12 @@ df.IA.sync_NM = df.IA.sync %>%
 write.csv(df.IA.sync_NM,"peaks_intra.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.OF", "df.MEA", "df.IA.sync", "df.IA.sync_NM")))
+rm(list = setdiff(ls(), c("df", "df.OF", "df.MEA", "df.IA.sync", "df.IA.sync_NM", "ls.mea")))
 
 # Save workspace ----------------------------------------------------------
 
 # save workspace
 save.image(paste0(getwd(), "/Data_mixed/intra.RData"))
+
+# save list of fakeMEA objects for pseudosync calculation
+saveRDS(ls.mea, file = paste0(getwd(), "/Data_psync/intraMEA.RDS"))

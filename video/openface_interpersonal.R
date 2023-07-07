@@ -139,6 +139,9 @@ ls.AUs = str_subset(names(df), "AU.*_r|pose_R*")
 # 1) create fake MEA object using the fakeMEA function
 # 2) calculate ccf according to rMEA
 
+# create list to be filled with fakeMEA objects
+ls.mea = c()
+
 # loop through all dyads
 sampRate = 30
 df.AU.sync = data.frame()
@@ -170,6 +173,9 @@ for (i in unique(df$dyad)){
       # time lagged windowed cross-correlations
       mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
       names(mea) = paste(i, "H", j, sep = "_")
+      
+      # add object to fakeMEA list
+      ls.mea = c(ls.mea, mea)
       
       # extract matrix with all ccf values over all lags and windows 
       df.ccf = mea[[1]][["ccf"]] 
@@ -223,6 +229,9 @@ for (i in unique(df$dyad)){
       mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
       names(mea) = paste(i, "M", j, sep = "_")
       
+      # add object to fakeMEA list
+      ls.mea = c(ls.mea, mea)
+      
       # extract matrix with all ccf values over all lags and windows 
       df.ccf = mea[[1]][["ccf"]] 
       
@@ -257,7 +266,7 @@ for (i in unique(df$dyad)){
 }
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "fakeMEA")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "fakeMEA", "ls.mea")))
 
 # check missing values for each AU and pose
 df.AUs = df.AU.sync %>%
@@ -298,7 +307,7 @@ df.AU.sync_NM = df.AU.sync %>%
 write.csv(df.AU.sync_NM, "FE_syncentrain.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "fakeMEA")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "fakeMEA", "ls.mea")))
 
 # Facial expressiveness ---------------------------------------------------
 
@@ -453,8 +462,12 @@ df.exp_NM = merge(df.exp_NM, df.exp.sync_NM)
 write.csv(df.exp_NM, "FE_intensity.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", "df.exp.sync", "df.exp_NM")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", "df.exp.sync", "df.exp_NM", "ls.mea")))
 
 # Save workspace ----------------------------------------------------------
 
+# save workspace
 save.image(file = "OpenFace.Rdata")
+
+# save list of fakeMEA objects for pseudosync calculation
+saveRDS(ls.mea, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interOF.RDS"))
