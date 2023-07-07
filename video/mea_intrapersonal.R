@@ -339,5 +339,5 @@ rm(list = setdiff(ls(), c("df", "df.OF", "df.MEA", "df.IA.sync", "df.IA.sync_NM"
 # save workspace
 save.image(paste0(getwd(), "/Data_mixed/intra.RData"))
 
-# save list of fakeMEA objects for pseudosync calculation
-saveRDS(ls.mea, file = paste0(getwd(), "/Data_psync/intraMEA.RDS"))
+# save list of fakeMEA objects for pseudosync calculation: contains sampRate, lag, win, inc information
+saveRDS(ls.mea, file = paste0(getwd(), "/Data_psync/intraMEA_30_5_30_15.RDS"))

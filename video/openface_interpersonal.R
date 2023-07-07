@@ -479,6 +479,6 @@ rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp",
 # save workspace
 save.image(file = "OpenFace.Rdata")
 
-# save list of fakeMEA objects for pseudosync calculation
-saveRDS(ls.fakeAU, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interAU.RDS"))
-saveRDS(ls.fakeFE, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interFE.RDS"))
+# save list of fakeMEA objects for pseudosync calculation: contains sampRate, lag, win, inc information
+saveRDS(ls.fakeAU, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interAU_30_2_7_4.RDS"))
+saveRDS(ls.fakeFE, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interFE_30_2_7_4.RDS"))
