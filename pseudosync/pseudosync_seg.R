@@ -42,6 +42,8 @@ pseudosync_seg = function(mea, sampRate, lagSec, winSec, incSec,
   # go through all list elements
   for (i in 1:length(mea)) {
     
+    print(sprintf("%i of %i", i, length(mea)))
+    
     # divide left or right into segments
     mea_1 = split(mea[[i]][["MEA"]][[1]], floor(seq_along(mea[[i]][["MEA"]][[1]])/(winSec*sampRate)))
     mea_2 = split(mea[[i]][["MEA"]][[2]], floor(seq_along(mea[[i]][["MEA"]][[2]])/(winSec*sampRate)))
