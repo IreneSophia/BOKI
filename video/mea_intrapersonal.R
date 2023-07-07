@@ -32,7 +32,7 @@ options(datatable.fread.datatable = F)
 # Output:
 #     * fake MEA object that pretends to be a MEA object
 #
-fakeMEA <- function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
+fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
   mea = structure(list(all_01_01 = structure(list(MEA = structure(list(
     s1Name = s1, s2Name = s2), row.names = c(NA, -length(s1)), class = "data.frame"), 
     ccf = NULL, ccfRes = NULL), id = "01", session = "01", group = "all", sampRate = sampRate, 
@@ -124,21 +124,21 @@ if (length(outlier) > 0) {ls.clean = ls[-outlier]} else {ls.clean = ls}
 # Create head movement vector ---------------------------------------------
 
 # initialize function
-vlength <- function(x) {
-  length <- sqrt((x[1])^2+(x[2])^2+(x[3])^2)
+vlength = function(x) {
+  length = sqrt((x[1])^2+(x[2])^2+(x[3])^2)
   return(length)
 }
 
 # loop through list of dataframes 
 for (i in 1:length(ls.clean)){
   # calculate frame-to-frame differences
-  ls.clean[[i]]$diff_Tx <- c(NA,diff(ls.clean[[i]]$pose_Tx)) 
-  ls.clean[[i]]$diff_Ty <- c(NA,diff(ls.clean[[i]]$pose_Ty))
-  ls.clean[[i]]$diff_Tz <- c(NA,diff(ls.clean[[i]]$pose_Tz))
+  ls.clean[[i]]$diff_Tx = c(NA,diff(ls.clean[[i]]$pose_Tx)) 
+  ls.clean[[i]]$diff_Ty = c(NA,diff(ls.clean[[i]]$pose_Ty))
+  ls.clean[[i]]$diff_Tz = c(NA,diff(ls.clean[[i]]$pose_Tz))
   # delete first row of NA
-  ls.clean[[i]] <- ls.clean[[i]][-1,]  
+  ls.clean[[i]] = ls.clean[[i]][-1,]  
   # calculate vector length
-  ls.clean[[i]]$OF.headmov <- apply(ls.clean[[i]][,c("diff_Tx","diff_Ty","diff_Tz")],1,vlength)
+  ls.clean[[i]]$OF.headmov = apply(ls.clean[[i]][,c("diff_Tx","diff_Ty","diff_Tz")],1,vlength)
 }
 
 # convert to dataframe

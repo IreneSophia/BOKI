@@ -28,7 +28,7 @@ options(datatable.fread.datatable = F)
 # Output:
 #     * fake MEA object that pretends to be a MEA object
 #
-fakeMEA <- function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
+fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
   mea = structure(list(all_01_01 = structure(list(MEA = structure(list(
     s1Name = s1, s2Name = s2), row.names = c(NA, -length(s1)), class = "data.frame"), 
     ccf = NULL, ccfRes = NULL), id = "01", session = "01", group = "all", sampRate = sampRate, 
