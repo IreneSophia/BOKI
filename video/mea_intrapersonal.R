@@ -234,7 +234,7 @@ for (i in unique(df$ID)){
     title(main = paste(i, "H", sep = "_")) # alternative title
     
     # peak picking
-    sync = apply(df.ccf, 1, max, na.rm =T ) 
+    sync = apply(df.ccf, 1, max, na.rm = T ) 
     
     df.indi = as.data.frame(sync) %>%
       rownames_to_column(var = "window") %>%
