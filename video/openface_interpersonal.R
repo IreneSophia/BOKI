@@ -139,8 +139,8 @@ ls.AUs = str_subset(names(df), "AU.*_r|pose_R*")
 # 1) create fake MEA object using the fakeMEA function
 # 2) calculate ccf according to rMEA
 
-# create list to be filled with fakeMEA objects
-ls.mea = c()
+# create list to be filled with fakeMEA objects of AUs
+ls.fakeAU = c()
 
 # loop through all dyads
 sampRate = 30
@@ -175,7 +175,7 @@ for (i in unique(df$dyad)){
       names(mea) = paste(i, "H", j, sep = "_")
       
       # add object to fakeMEA list
-      ls.mea = c(ls.mea, mea)
+      ls.fakeAU = c(ls.fakeAU, mea)
       
       # extract matrix with all ccf values over all lags and windows 
       df.ccf = mea[[1]][["ccf"]] 
@@ -230,7 +230,7 @@ for (i in unique(df$dyad)){
       names(mea) = paste(i, "M", j, sep = "_")
       
       # add object to fakeMEA list
-      ls.mea = c(ls.mea, mea)
+      ls.fakeAU = c(ls.fakeAU, mea)
       
       # extract matrix with all ccf values over all lags and windows 
       df.ccf = mea[[1]][["ccf"]] 
@@ -266,7 +266,7 @@ for (i in unique(df$dyad)){
 }
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "fakeMEA", "ls.mea")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "fakeMEA", "ls.fakeAU")))
 
 # check missing values for each AU and pose
 df.AUs = df.AU.sync %>%
@@ -307,9 +307,12 @@ df.AU.sync_NM = df.AU.sync %>%
 write.csv(df.AU.sync_NM, "FE_syncentrain.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "fakeMEA", "ls.mea")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "fakeMEA", "ls.fakeAU")))
 
 # Facial expressiveness ---------------------------------------------------
+
+# create list to be filled with fakeMEA objects of facial expressiveness
+ls.fakeFE = c()
 
 # operationalised as the mean intensity of all included AUs
 df.exp = df %>%
@@ -348,6 +351,9 @@ for (i in unique(df.exp$dyad)){
     # time lagged windowed cross-correlations
     mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
     names(mea) = paste(i, "H_exp", sep = "_")
+    
+    # add object to fakeMEA list
+    ls.fakeFE = c(ls.fakeFE, mea)
     
     # extract matrix with all ccf values over all lags and windows 
     df.ccf = mea[[1]][["ccf"]] 
@@ -395,6 +401,9 @@ for (i in unique(df.exp$dyad)){
     # time lagged windowed cross-correlations
     mea = MEAccf(mea, lagSec = 2, winSec = 7, incSec = 4, r2Z = T, ABS = T) 
     names(mea) = paste(i, "M_exp", sep = "_")
+    
+    # add object to fakeMEA list
+    ls.fakeFE = c(ls.fakeFE, mea)
     
     # extract matrix with all ccf values over all lags and windows 
     df.ccf = mea[[1]][["ccf"]] 
@@ -462,7 +471,8 @@ df.exp_NM = merge(df.exp_NM, df.exp.sync_NM)
 write.csv(df.exp_NM, "FE_intensity.csv")
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", "df.exp.sync", "df.exp_NM", "ls.mea")))
+rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", 
+                          "df.exp.sync", "df.exp_NM", "ls.fakeAU", "ls.fakeFE")))
 
 # Save workspace ----------------------------------------------------------
 
@@ -470,4 +480,5 @@ rm(list = setdiff(ls(), c("df", "df.AU.sync", "df.AU.sync_NM", "df.exp", "df.exp
 save.image(file = "OpenFace.Rdata")
 
 # save list of fakeMEA objects for pseudosync calculation
-saveRDS(ls.mea, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interOF.RDS"))
+saveRDS(ls.fakeAU, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interAU.RDS"))
+saveRDS(ls.fakeFE, file = paste0(str_replace(getwd(), "OpenFace", "psync"), "/interFE.RDS"))
