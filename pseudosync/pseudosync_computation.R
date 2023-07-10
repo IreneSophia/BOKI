@@ -1,7 +1,7 @@
 # (C) Irene Sophia Plank
 # 
 # This script takes lists of MEA and fakeMEA objects and calculates pseudo-
-# synchrony using the pseudosync_seg.R function. 
+# synchrony using the pseudosync_seg function. 
 
 library(tidyverse)
 library(rMEA)
@@ -40,3 +40,4 @@ for (f in ls.files) {
 }
 
 # save the pseudosynchrony values
+write_csv(df.psync, "df_psync.csv")
