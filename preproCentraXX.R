@@ -3,7 +3,7 @@ library(tidyverse)
 
 # Clear global environment
 rm(list=ls())
-setwd("/home/iplank/Documents/ML_BOKI/CentraXX")
+setwd("/home/emba/Documents/ML_BOKI/CentraXX")
 
 # load raw data
 # columns of Interest: internalStudyMemberID, name2, code, value, section, (valueIndex), numericValue
@@ -102,8 +102,9 @@ df.demo = df %>% filter(questionnaire == "PSY_BOKI_DEMO") %>%
     value = case_when(
       grepl("keine|nein", value, ignore.case = TRUE) ~ "0",
       grepl("ja", value, ignore.case = TRUE) ~ "1",
-      grepl("MALE", value, ignore.case = TRUE) ~ "mal",
       grepl("FEMALE", value, ignore.case = TRUE) ~ "fem",
+      grepl("MALE", value, ignore.case = TRUE) ~ "mal",
+      grepl("DIVERS", value, ignore.case = TRUE) ~ "other",
       TRUE ~ value
     )
   )
@@ -256,17 +257,11 @@ cft = read_delim("CFT-norms.csv", show_col_types = F, delim = ";")
 df.sub$CFT_iq = NA
 df.sub$MWT_iq = NA
 for (i in 1:nrow(df.sub)) {
-  if (df.sub$SID[i] == "MXCWWEMF1U") {
-    df.sub$CFT_iq[i] = NA
-    df.sub$MWT_iq[i] = NA
+  if (df.sub$CFT_total[i] >= 9 & !is.na(df.sub$CFT_total[i]) & !is.na(df.sub$age[i]) & df.sub$age[i] >= 16 & df.sub$age[i] <= 60) {
+    df.sub$CFT_iq[i] = cft[(df.sub$age[i] >= cft$lower & df.sub$age[i] <= cft$upper & df.sub$CFT_total[i] == cft$raw),]$iq
   }
-  else {
-    if (df.sub$CFT_total[i] >= 9 & !is.na(df.sub$CFT_total[i]) & !is.na(df.sub$age[i]) & df.sub$age[i] >= 16 & df.sub$age[i] <= 60) {
-      df.sub$CFT_iq[i] = cft[(df.sub$age[i] >= cft$lower & df.sub$age[i] <= cft$upper & df.sub$CFT_total[i] == cft$raw),]$iq
-    }
-    if (!is.na(df.sub$MWT_total[i])) {
-      df.sub$MWT_iq[i] = mwt[(df.sub$MWT_total[i] == mwt$raw),]$iq
-    }
+  if (!is.na(df.sub$MWT_total[i])) {
+    df.sub$MWT_iq[i] = mwt[(df.sub$MWT_total[i] == mwt$raw),]$iq
   }
 }
 
