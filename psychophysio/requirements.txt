@@ -1,0 +1,13 @@
+latex installed (see https://github.com/garrettj403/SciencePlots/wiki/FAQ#installing-latex)
+python 3.*
+
+python packages:
+neurokit2
+numpy==1.16.2
+scipy==1.2.1
+pandas==0.24.1
+scikit-learn==0.20.3
+matplotlib>=2.1.2
+PyWavelets==1.0.2
+avro
+simple_colors
