@@ -283,10 +283,10 @@ def convert_eplus(dir_path, part):
         'eda'  : pd.concat(ls_eda)
     }
 
-def convert_e4(part_path):
+def convert_e4(part_path, part):
     # reading in all e4 data and adding a time index
     
-    # check if all the data was found - MISSING: TEST THIS AT THE KLINIK!!!
+    # check if all the data was found
     fl_temp = glob.glob(os.path.join(part_path, 'TEMP.csv'))
     fl_acc  = glob.glob(os.path.join(part_path, 'ACC.csv'))
     fl_eda  = glob.glob(os.path.join(part_path, 'EDA.csv'))
@@ -566,7 +566,7 @@ def preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass):
             part_path = os.path.dirname(part_tag)
 
             # convert e4 data
-            dict_data = convert_e4(part_path)
+            dict_data = convert_e4(part_path, part)
 
         # if no data was found for this participant, continue with the next one
         if len(dict_data) < 1:
