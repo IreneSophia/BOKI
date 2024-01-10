@@ -367,27 +367,24 @@ def cut_data(dict_data, part_tag, dir_out):
             print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Either start or end value is missing.')
             continue
         
-        # determine the start and end point and cut out block
+        # determine the start point in seconds from the beginning of the recording
         if row['start_unit'] == 'unix':
             start   = datetime.fromtimestamp(float(row['start'])/(10**(len(str(row['start']))-10)))
-            if row['start_buffer'] > 0:
-                start = start + pd.Timedelta(seconds=row['start_buffer'])
-            df_temp = dict_data['temp'][dict_data['temp'].index >= start]
-            df_acc  = dict_data['acc'][dict_data['acc'].index >= start]
-            df_bvp  = dict_data['bvp'][dict_data['bvp'].index >= start]
-            df_eda  = dict_data['eda'][dict_data['eda'].index >= start]
         elif row['start_unit'] == 'seconds':
-            df_temp = dict_data['temp'][dict_data['temp'].index >= 
-                                        (dict_data['temp'].index[0] + pd.Timedelta(seconds=(row['start']+row['start_buffer'])))]
-            df_acc  = dict_data['acc'][dict_data['acc'].index >= 
-                                        (dict_data['acc'].index[0] + pd.Timedelta(seconds=(row['start']+row['start_buffer'])))]
-            df_eda  = dict_data['eda'][dict_data['eda'].index >= 
-                                        (dict_data['eda'].index[0] + pd.Timedelta(seconds=(row['start']+row['start_buffer'])))]
-            df_bvp  = dict_data['bvp'][dict_data['bvp'].index >= 
-                                        (dict_data['bvp'].index[0] + pd.Timedelta(seconds=(row['start']+row['start_buffer'])))]
+            start   = dict_data['bvp'].index[0] + pd.Timedelta(seconds=row['start'])
         else:
             print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Start of each tag has to be either seconds or unix.')
             continue
+        
+        # add buffer if necessary
+        if row['start_buffer'] > 0:
+            start = start + pd.Timedelta(seconds=row['start_buffer'])
+        
+        # cut out start 
+        df_temp = dict_data['temp'][dict_data['temp'].index >= start]
+        df_acc  = dict_data['acc'][dict_data['acc'].index   >= start]
+        df_bvp  = dict_data['bvp'][dict_data['bvp'].index   >= start]
+        df_eda  = dict_data['eda'][dict_data['eda'].index   >= start]
         
         # figure out duration of block if not in seconds based on bvp
         if row['end_unit'] == 'unix':
@@ -395,7 +392,8 @@ def cut_data(dict_data, part_tag, dir_out):
         elif row['end_unit'] == 'duration': 
             end = row['end']
         elif row['end_unit'] == 'seconds':
-            end = row['end'] - row['start']
+            x = df_temp.index[0] - dict_data['bvp'].index[0]
+            end = row['end'] - x.total_seconds()
         else:
             print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be duration, seconds or unix.')
             continue
