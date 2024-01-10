@@ -392,10 +392,12 @@ def cut_data(dict_data, part_tag, dir_out):
         # figure out duration of block if not in seconds based on bvp
         if row['end_unit'] == 'unix':
             end   = (datetime.fromtimestamp(float(row['end'])/(10**(len(str(round(row['end'])))-10))) - df_bvp.index[0]).total_seconds()
-        elif row['end_unit'] == 'seconds': 
+        elif row['end_unit'] == 'duration': 
             end = row['end']
+        elif row['end_unit'] == 'seconds':
+            end = row['end'] - row['start']
         else:
-            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be either seconds or unix.')
+            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be duration, seconds or unix.')
             continue
         
         # subtract buffer from end and check if enought time left
