@@ -33,7 +33,6 @@ import matplotlib.pyplot as plt
 import scipy
 import simple_colors
 import math
-import re
 import glob
 import os
 import warnings
@@ -211,7 +210,7 @@ def convert_eplus(dir_path, part):
     
     # get list of all files of this participant
     fls = glob.glob(os.path.join(dir_path, 'participant_data',
-                                 '*', part+'*', 'raw_data', 'v6', '*.avro'))
+                                 '*', '*', 'raw_data', 'v*', part + '*.avro'))
     
     # check if any data was found
     if len(fls) < 1:
@@ -347,14 +346,11 @@ def convert_e4(part_path, part):
         'eda'  : df_eda
     }
 
-def cut_data(dict_data, part_tag, dir_out):
+def cut_data(dict_data, tags, dir_out):
     # cutting the data into blocks of interest based on the tag files
     
     # if output directory does not exist, create it
     if not os.path.exists(dir_out): os.makedirs(dir_out) 
-    
-    # read in the tags
-    tags = pd.read_csv(part_tag)
     
     # create empty dictionary
     dict_df_new = {}
@@ -523,15 +519,11 @@ def bvp_prepro(dir_out, df_bvp, part, key):
 
 ###### Run everything
 
-def preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass):
+def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass):
 
-    # create a list of all the participants to be processed
-    if empatica == 'e+':
-        ls_parts = glob.glob(os.path.join(dir_path, 'metadata', '*_tags.csv'))
-    elif empatica == 'e4':
-        ls_parts = glob.glob(os.path.join(dir_path, '**', '*_tags.csv'), recursive=True)
-    else:
-        raise Exception('empatica needs to be either e+ or e4!')
+    # load the tag file containing participant IDs and block information
+    tags = pd.read_csv(tag_file)
+    ls_parts = list(tags['part'].unique())
 
     # remove excluded participants
     for e in exclude:
@@ -540,13 +532,10 @@ def preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass):
                 ls_parts.remove(part)
 
     # loop through the sorted participants
-    for part_tag in sorted(ls_parts):
+    for part in sorted(ls_parts):
 
         # read in and convert the data
         if empatica == 'e+':
-
-            # get participant ID
-            part = re.search('-(.*)_tags.csv', part_tag).group(1)[-3:]
 
             # print a message
             print(simple_colors.blue(datetime.now().strftime("%H:%M:%S") + ' - processing participant ' + part, 'bold'))
@@ -556,17 +545,11 @@ def preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass):
 
         elif empatica == 'e4':
 
-            # get participant ID
-            part = re.search('(.*)_tags.csv', os.path.basename(part_tag)).group(1)
-
             # print a message
             print(simple_colors.blue(datetime.now().strftime("%H:%M:%S") + ' - processing participant ' + part, 'bold'))
 
-            # get participant folder path
-            part_path = os.path.dirname(part_tag)
-
             # convert e4 data
-            dict_data = convert_e4(part_path, part)
+            dict_data = convert_e4(os.path.join(dir_path, part), part)
 
         # if no data was found for this participant, continue with the next one
         if len(dict_data) < 1:
@@ -575,7 +558,7 @@ def preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass):
         print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - conversion done', 'bold'))
 
         # cut out the relevant blocks of data and interpolate any missing data
-        dict_data = cut_data(dict_data, part_tag, dir_out)
+        dict_data = cut_data(dict_data, tags[tags['part'] == part], dir_out)
         print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block separation done', 'bold'))
 
         # loop through the blocks and preprocess the data
