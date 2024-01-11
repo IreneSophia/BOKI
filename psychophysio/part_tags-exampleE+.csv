@@ -1,0 +1,5 @@
+part,tag,start,start_unit,start_buffer,end,end_unit,end_buffer,comments
+1-1-001,task1,1040,seconds,1,1640,seconds,0,"In the case of EmbracePlus data, the part column contains the first part of the name of the avro files before the underscore. Here, task1 begins 1040 seconds after the recording was started and 1 second of buffer is added to this. It ends 1640 seconds after the recording was started"
+1-1-001,task2,354,seconds,0,954,seconds,1,"Task2 starts 354 seconds after the recording was started and ends 953 seconds after the recording was started, because 1 second buffer are subtracted from the end point"
+1-1-002,baseline,1690467485514234,unix,0,180,duration,0,"Here, the baseline starts at a specified unix time point and has a duration of 180s."
+1-1-002,task1,1690532365202460,unix,0,1690533240276465,unix,0,"Here, the task1 starts and ends at specified unix time points. "
