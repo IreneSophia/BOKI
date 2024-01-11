@@ -10,12 +10,13 @@ functions from the NeuroKit2 package. Specifically for the EDA preprocessing,
 it also draws inspiration from Ledalab. 
 
 Arguments: 
+    dir_path   : data input directory
+    dir_out    : output directory for all the results
+    tag_file   : full path to tag_file containing info on file names and blocks
     empatica   : either 'e4' or 'e+'
+    exclude    : list of patterns to be excluded from preprocessing
     winwidth   : width of the window for smoothing of EDA with Gaussian kernel (int)
     lowpass    : lowpass filter frequency for EDA - has to be no larger than half the sample rate
-    dir_out    : output directory for all the results
-    dir_path   : input directory
-    exclude    : list of patterns to be excluded from preprocessing
 
 The function creates preprocessed data files for EDA and BVP as well as plots 
 to check the data quality. 
@@ -33,6 +34,8 @@ from preproPSYPHY import preproPSYPHY
 winwidth = 8 
 # lowpass filter frequency
 lowpass  = 5 
+# path to tag file
+tag_file = os.path.join(os.getcwd(), 'part_tags-short.csv')
 # path to the data directory
 dir_path = os.path.join(os.getcwd(), 'E+/1/1')
 # path to the output directory
@@ -42,4 +45,4 @@ empatica = 'e+'
 # list of participants that should not be processed
 exclude  = []
 
-preproPSYPHY(dir_path, dir_out, empatica, exclude, winwidth, lowpass)
+preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass)
