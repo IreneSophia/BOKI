@@ -391,80 +391,92 @@ def cut_data(dict_data, tags, dir_out):
     # loop throught the rows of tags
     for index, row in tags.iterrows():
         
-        # check if end and start values are provided
-        if np.isnan(row['end']) | np.isnan(row['start']):
-            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Either start or end value is missing.')
-            continue
+        # check if anything is supposed to be cut
+        if row['start_unit'] != 'all':
         
-        # determine the start point in seconds from the beginning of the recording
-        if row['start_unit'] == 'unix':
-            start   = datetime.fromtimestamp(float(row['start'])/(10**(len(str(row['start']))-10)))
-        elif row['start_unit'] == 'seconds':
-            start   = dict_data['bvp'].index[0] + pd.Timedelta(seconds=row['start'])
+            # check if end and start values are provided
+            if np.isnan(row['end']) | np.isnan(row['start']):
+                print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Either start or end value is missing.')
+                continue
+            
+            # determine the start point in seconds from the beginning of the recording
+            if row['start_unit'] == 'unix':
+                start   = datetime.fromtimestamp(float(row['start'])/(10**(len(str(row['start']))-10)))
+            elif row['start_unit'] == 'seconds':
+                start   = dict_data['bvp'].index[0] + pd.Timedelta(seconds=row['start'])
+            else:
+                print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Start of each tag has to be either seconds or unix.')
+                continue
+            
+            # add buffer if necessary
+            if row['start_buffer'] > 0:
+                start = start + pd.Timedelta(seconds=row['start_buffer'])
+            
+            # cut out start 
+            if len(dict_data['temp']) > 0:
+                df_temp = dict_data['temp'][dict_data['temp'].index >= start]
+            else:
+                df_temp = []
+            if len(dict_data['acc']) > 0:
+                df_acc  = dict_data['acc'][dict_data['acc'].index   >= start]
+            else:
+                df_acc = []
+            df_bvp  = dict_data['bvp'][dict_data['bvp'].index   >= start]
+            df_eda  = dict_data['eda'][dict_data['eda'].index   >= start]
+            
+            # figure out duration of block if not in seconds based on bvp
+            if row['end_unit'] == 'unix':
+                end   = (datetime.fromtimestamp(float(row['end'])/(10**(len(str(round(row['end'])))-10))) - df_bvp.index[0]).total_seconds()
+            elif row['end_unit'] == 'duration': 
+                end = row['end']
+            elif row['end_unit'] == 'seconds':
+                x = df_bvp.index[0] - dict_data['bvp'].index[0]
+                end = row['end'] - x.total_seconds()
+            else:
+                print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be duration, seconds or unix.')
+                continue
+            
+            # subtract buffer from end and check if enought time left
+            end = end - row['end_buffer']
+            if end <= 0:
+                print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Duration is 0 seconds or less.')
+                continue
+            
+            # cut out the end point as well as
+            if len(dict_data['temp']) > 0:
+                df_temp = df_temp[df_temp.index <
+                                        (df_temp.index[0] + pd.Timedelta(seconds=end))]
+                df_temp.index = pd.timedelta_range(start='0S', periods=len(df_temp), freq=str(df_temp['sampRate'].iloc[0]*1000000)+'U')
+            if len(dict_data['acc']) > 0:
+                df_acc  = df_acc[df_acc.index <
+                                        (df_acc.index[0] + pd.Timedelta(seconds=end))]
+                df_acc.index  = pd.timedelta_range(start='0S', periods=len(df_acc), freq=str(df_acc['sampRate'].iloc[0]*1000000)+'U')
+            df_eda  = df_eda[df_eda.index < 
+                                        (df_eda.index[0] + pd.Timedelta(seconds=end))]
+            df_eda.index  = pd.timedelta_range(start='0S', periods=len(df_eda), freq=str(df_eda['sampRate'].iloc[0]*1000000)+'U')
+            df_bvp  = df_bvp[df_bvp.index < 
+                                        (df_bvp.index[0] + pd.Timedelta(seconds=end))]        
+            df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
+            
+            # interpolate missing data and add column with interpolation info
+            df_eda, df_bvp, df_temp, df_acc = int_missing(df_eda, df_bvp, df_temp, df_acc)
+            
+            # add cut data frame to the lists
+            dict_df_new[row['tag']] = {     
+                'temp' : df_temp,
+                'acc'  : df_acc,
+                'bvp'  : df_bvp,
+                'eda'  : df_eda
+                }
+            
         else:
-            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Start of each tag has to be either seconds or unix.')
-            continue
-        
-        # add buffer if necessary
-        if row['start_buffer'] > 0:
-            start = start + pd.Timedelta(seconds=row['start_buffer'])
-        
-        # cut out start 
-        if len(dict_data['temp']) > 0:
-            df_temp = dict_data['temp'][dict_data['temp'].index >= start]
-        else:
-            df_temp = []
-        if len(dict_data['acc']) > 0:
-            df_acc  = dict_data['acc'][dict_data['acc'].index   >= start]
-        else:
-            df_acc = []
-        df_bvp  = dict_data['bvp'][dict_data['bvp'].index   >= start]
-        df_eda  = dict_data['eda'][dict_data['eda'].index   >= start]
-        
-        # figure out duration of block if not in seconds based on bvp
-        if row['end_unit'] == 'unix':
-            end   = (datetime.fromtimestamp(float(row['end'])/(10**(len(str(round(row['end'])))-10))) - df_bvp.index[0]).total_seconds()
-        elif row['end_unit'] == 'duration': 
-            end = row['end']
-        elif row['end_unit'] == 'seconds':
-            x = df_bvp.index[0] - dict_data['bvp'].index[0]
-            end = row['end'] - x.total_seconds()
-        else:
-            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be duration, seconds or unix.')
-            continue
-        
-        # subtract buffer from end and check if enought time left
-        end = end - row['end_buffer']
-        if end <= 0:
-            print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Duration is 0 seconds or less.')
-            continue
-        
-        # cut out the end point as well as
-        if len(dict_data['temp']) > 0:
-            df_temp = df_temp[df_temp.index <
-                                    (df_temp.index[0] + pd.Timedelta(seconds=end))]
-            df_temp.index = pd.timedelta_range(start='0S', periods=len(df_temp), freq=str(df_temp['sampRate'].iloc[0]*1000000)+'U')
-        if len(dict_data['acc']) > 0:
-            df_acc  = df_acc[df_acc.index <
-                                    (df_acc.index[0] + pd.Timedelta(seconds=end))]
-            df_acc.index  = pd.timedelta_range(start='0S', periods=len(df_acc), freq=str(df_acc['sampRate'].iloc[0]*1000000)+'U')
-        df_eda  = df_eda[df_eda.index < 
-                                    (df_eda.index[0] + pd.Timedelta(seconds=end))]
-        df_eda.index  = pd.timedelta_range(start='0S', periods=len(df_eda), freq=str(df_eda['sampRate'].iloc[0]*1000000)+'U')
-        df_bvp  = df_bvp[df_bvp.index < 
-                                    (df_bvp.index[0] + pd.Timedelta(seconds=end))]        
-        df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
-        
-        # interpolate missing data and add column with interpolation info
-        df_eda, df_bvp, df_temp, df_acc = int_missing(df_eda, df_bvp, df_temp, df_acc)
-        
-        # add cut data frame to the lists
-        dict_df_new[row['tag']] = {     
-            'temp' : df_temp,
-            'acc'  : df_acc,
-            'bvp'  : df_bvp,
-            'eda'  : df_eda
-            }
+            # simply add all the data under this tag if all is selected
+            dict_df_new[row['tag']] = {     
+                'temp' : dict_data['temp'],
+                'acc'  : dict_data['acc'],
+                'bvp'  : dict_data['bvp'],
+                'eda'  : dict_data['eda']
+                }
             
     # replace the data frame in the dictionary with the list of data frames
     return dict_df_new
