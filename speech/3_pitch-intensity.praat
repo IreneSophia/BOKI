@@ -11,7 +11,7 @@
 
 # specify directory containing the data and the output
 # this file needs to contain "ML_pitch_limits.csv"
-folder$ = "/home/emba/Documents/ML_BOKI/Data_speech/"
+folder$ = "/home/emba/Documents/ML_BOKI/Data_audio/"
 # please enter the file separator from your OS
 filesep$ = "/" 
 

@@ -10,7 +10,7 @@
 ####################################################
 
 # specify directory containing the data and the output
-folder$ = "/home/emba/Documents/ML_BOKI/Data_speech/"
+folder$ = "/home/emba/Documents/ML_BOKI/Data_audio/"
 # please enter the file separator from your OS
 filesep$ = "/" 
 

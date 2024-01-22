@@ -10,7 +10,7 @@
 ####################################################
 
 # specify directory containing the data and the output
-folder$ = "/home/emba/Documents/ML_BOKI/Data_speech/"
+folder$ = "/home/emba/Documents/ML_BOKI/Data_audio/"
 # please enter the file separator from your OS
 filesep$ = "/" 
 
@@ -23,7 +23,7 @@ clearinfo
 
 appendInfoLine: "read in and separate audio channels"
 
-fls = Create Strings as file list: "list", folder$ + "BOKI_*.wav"
+fls = Create Strings as file list: "list", folder$ + "*.wav"
 nof = Get number of strings
 for ifile to nof
     selectObject: fls
