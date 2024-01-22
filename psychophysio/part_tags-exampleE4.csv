@@ -3,3 +3,4 @@ E4_foldername,task1,1040,seconds,1,1640,seconds,0,"In the case of E4, the part c
 E4_foldername,task2,354,seconds,0,954,seconds,1,"Task2 starts 354 seconds after the recording was started and ends 953 seconds after the recording was started, because 1 second buffer are subtracted from the end point"
 E4_foldername,baseline,1690467485514234,unix,0,180,duration,0,"Here, the baseline starts at a specified unix time point and has a duration of 180s."
 E4_foldername,task1,1690532365202460,unix,0,1690533240276465,unix,0,"Here, the task1 starts and ends at specified unix time points. "
+E4_foldername,complete,,all,,,,,Using all as the start_unit does not cut the data but puts all of the data in a block
