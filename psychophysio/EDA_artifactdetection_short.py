@@ -311,7 +311,7 @@ def createFeatureDF(data):
         filepath:           string, path to input file  
     OUTPUTS:
         features:           DataFrame, index is a list of timestamps for each 5 seconds, contains all the features
-        data:               DataFrame, index is a list of timestamps at 8Hz, columns include accz, accy, accx, temp, eda, filtered_eda
+        data:               DataFrame, index is a list of timestamps at 8Hz, columns include eda, filtered_eda
     '''
     # Load data from q sensor
     wave1sec,waveHalf = getWaveletData(data)
@@ -390,7 +390,7 @@ def classify(data):
         data
     OUTPUT:
         featureLabels:          Series, index is a list of timestamps for each 5 seconds, values of -1, 0, or 1 for artifact, questionable, or clean
-        data:                   DataFrame, only output if fullFeatureOutput=1, index is a list of timestamps at 8Hz, columns include accz, accy, accx, temp, eda, filtered_eda
+        data:                   DataFrame, only output if fullFeatureOutput=1, index is a list of timestamps at 8Hz, columns include eda, filtered_eda
     '''
     
     # Get correct feature names for classifier
@@ -482,13 +482,7 @@ def plotData(data, labels, filepath, part, tag, filteredPlot=0, secondsPlot=0):
 def EDA_artifact_detection(dict_df, dir_out, part, tag):
     
     # make sure data has 8Hz
-    df_temp = interpolateDataTo8Hz(dict_df['temp'], (1/dict_df['temp']['sampRate'].iloc[0]))
-    df_eda  = interpolateDataTo8Hz(dict_df['eda'], (1/dict_df['eda']['sampRate'].iloc[0]))
-    df_acc  = interpolateDataTo8Hz(dict_df['acc'], (1/dict_df['acc']['sampRate'].iloc[0]))
-    
-    # combine data
-    data = df_eda.join(df_temp, how='outer', lsuffix='_eda', rsuffix='_temp')
-    data = data.join(df_acc, how='outer')
+    data  = interpolateDataTo8Hz(dict_df['eda'], (1/dict_df['eda']['sampRate'].iloc[0]))
     
     # forward propagate data to fill NAs after merging
     data = data.ffill()
