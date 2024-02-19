@@ -364,12 +364,14 @@ def convert_cut(dir_path, part):
                             delimiter=";", index_col=0, parse_dates=['time'], date_parser=dateparse)
     sampRate  = 4
     df_eda['sampRate'] = round(1/sampRate, 3)
+    df_eda['raw'] = df_eda['eda']
     
     # bvp
     df_bvp    = pd.read_csv(fl_bvp[0], names=['time', 'bvp'], header=None, 
                             delimiter=";", index_col=0, parse_dates=['time'], date_parser=dateparse)
     sampRate  = 64
     df_bvp['sampRate'] = round(1/sampRate, 6)
+    df_bvp['raw'] = df_bvp['bvp']
     
     # put all data frames into one dictionary and return it
     return {       
@@ -470,11 +472,17 @@ def cut_data(dict_data, tags, dir_out):
                 }
             
         else:
-            # simply add all the data under this tag if all is selected
+            # reset the index 
+            df_bvp = dict_data['bvp']
+            df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
+            df_eda = dict_data['eda']
+            df_eda.index  = pd.timedelta_range(start='0S', periods=len(df_eda), freq=str(df_eda['sampRate'].iloc[0]*1000000)+'U')
+            
+            # then add all the data under this tag if all is selected
             dict_df_new[row['tag']] = {     
                 'temp' : dict_data['temp'],
                 'acc'  : dict_data['acc'],
-                'bvp'  : dict_data['bvp'],
+                'bvp'  : df_bvp,
                 'eda'  : dict_data['eda']
                 }
             
@@ -574,6 +582,7 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
 
     # load the tag file containing participant IDs and block information
     tags = pd.read_csv(tag_file)
+    tags['artefact%'] = np.nan
     ls_parts = list(tags['part'].unique())
 
     # remove excluded participants
@@ -620,9 +629,12 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
             # detect artifacts using the EDA Explorer classifier
             labels  = EDA_artifact_detection(dict_df, dir_out, part, key)
             per_art = sum(labels['Binary'] == -1)*100/len(labels)
-
+            
+            # add the percent to the tags object            
+            tags['artefact%'].loc[(tags['part'] == part) & (tags['tag'] == key)] = per_art
+            
             # only preprocess if less than 20% artefacts
-            if per_art < 20:
+            if per_art < (100/3):
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact detection done', 'bold'))
 
@@ -647,3 +659,5 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
             else: 
 
                 print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': STOPPED due to ' + str(round(per_art,2)) + '% artefacts', 'bold'))
+                
+    tags.to_csv(tag_file[:-4] + '_prepro.csv')
