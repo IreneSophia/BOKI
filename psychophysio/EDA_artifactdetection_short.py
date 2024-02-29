@@ -474,7 +474,7 @@ def plotData(data, labels, filepath, part, tag, filteredPlot=0, secondsPlot=0):
     # Display the plot
     plt.subplots_adjust(hspace=.3)
     plt.show()
-    plt.savefig(os.path.join(filepath, part + '_' + tag + '_artefacts.png'))
+    plt.savefig(os.path.join(filepath, part + '_' + tag + '_artefacts.png'), dpi = 300)
     
     return
 
