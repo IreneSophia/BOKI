@@ -644,8 +644,13 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
         # loop through the blocks and preprocess the data
         for key, dict_df in dict_data.items():
 
-            # detect artifacts using the EDA Explorer classifier
-            labels  = EDA_artifact_detection(dict_df, dir_out, part, key)
+            # check if artifact detection already exists
+            if (os.path.exists(os.path.join(dir_out, part + '_' + key + '_artefacts.csv'))):
+                # load it
+                labels = pd.read_csv(os.path.join(dir_out, part + '_' + key + '_artefacts.csv'), index_col=0)
+            else:
+                # detect artifacts using the EDA Explorer classifier
+                labels  = EDA_artifact_detection(dict_df, dir_out, part, key)
             per_art = sum(labels['Binary'] == -1)*100/len(labels)
             
             # add the percent to the tags object            
