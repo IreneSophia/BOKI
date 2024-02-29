@@ -483,7 +483,7 @@ def cut_data(dict_data, tags, dir_out):
                 'temp' : dict_data['temp'],
                 'acc'  : dict_data['acc'],
                 'bvp'  : df_bvp,
-                'eda'  : dict_data['eda']
+                'eda'  : df_eda
                 }
             
     # replace the data frame in the dictionary with the list of data frames
