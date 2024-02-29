@@ -17,6 +17,7 @@ Arguments:
     exclude    : list of patterns to be excluded from preprocessing
     winwidth   : width of the window for smoothing of EDA with Gaussian kernel (int)
     lowpass    : lowpass filter frequency for EDA - has to be no larger than half the sample rate
+    max_art    : maximum percent of artefacts when data is still preprocessed (0 - 100, default = 100/3)
 
 The function creates preprocessed data files for EDA and BVP as well as plots 
 to check the data quality. 

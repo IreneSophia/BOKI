@@ -578,7 +578,7 @@ def bvp_prepro(dir_out, df_bvp, part, key):
 
 ###### Run everything
 
-def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass):
+def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass, max_art = 100/3):
 
     # load the tag file containing participant IDs and block information
     tags = pd.read_csv(tag_file)
@@ -634,7 +634,7 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
             tags['artefact%'].loc[(tags['part'] == part) & (tags['tag'] == key)] = per_art
             
             # only preprocess if less than 20% artefacts
-            if per_art < (100/3):
+            if per_art < max_art:
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact detection done', 'bold'))
 
