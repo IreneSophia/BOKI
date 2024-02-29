@@ -37,7 +37,7 @@ def predict_binary_classifier(X):
     # Prediction = sign((sum_{i=1}^n y_i*alpha*K(x_i,x)) + rho)
     predictions = np.zeros(X.shape[0])
     for i in range(X.shape[0]):
-        # prediction is calculated and then divided into positive (artefact) or negative (no artefact)
+        # prediction is calculated and then divided into positive (no artefact) or negative (artefact)
         predictions[i] = np.sign(np.sum(params['dual_coef']*K[:, i]) + params['intercept'])
 
     return predictions
