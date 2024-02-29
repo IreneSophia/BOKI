@@ -73,7 +73,7 @@ def gauss_smoothing(data, winwidth):
     # cut to length of data
     return sdata_ext[(1+winwidth):(len(sdata_ext)-winwidth-1)]
 
-def int_missing(df_eda, df_bvp, df_temp, df_acc):
+def int_missing(df_eda, df_bvp, df_temp, df_acc, f):
     # performing linear interpolation for bvp, temp and acc as well as cubic
     # spline interpolation for eda
     
@@ -124,6 +124,9 @@ def int_missing(df_eda, df_bvp, df_temp, df_acc):
             print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + ' - ' + str(round(per_bvp*100,2)) + ' percent BVP were interpolated', 'bold'))
         elif per_bvp >= 0.01:
             print(simple_colors.yellow(datetime.now().strftime("%H:%M:%S") + ' - ' + str(round(per_bvp*100,2)) + ' percent BVP were interpolated', 'bold'))
+    
+    # write to log file
+    f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - ' + str(round(per_bvp*100,2)) + '% BVP and ' + str(round(per_eda*100,2)) + '% EDA were interpolated')
     
     # return the dataframes
     return df_eda, df_bvp, df_temp, df_acc
@@ -205,7 +208,7 @@ def read_avro(filepath):
     # return all data frames
     return df_temp, df_acc, df_bvp, df_eda
 
-def convert_eplus(dir_path, part):
+def convert_eplus(dir_path, part, f):
     # reading in and converting data collected with Embrace Plus
     
     # get list of all files of this participant
@@ -215,6 +218,7 @@ def convert_eplus(dir_path, part):
     # check if any data was found
     if len(fls) < 1:
         print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + '- no data was found for participant ' + part, 'bold'))
+        f.write('\n' + datetime.now().strftime("%H:%M:%S") + '- no data was found for participant ' + part)
         return {}
     
     # sort by start time in unix
@@ -282,7 +286,7 @@ def convert_eplus(dir_path, part):
         'eda'  : pd.concat(ls_eda)
     }
 
-def convert_e4(part_path, part):
+def convert_e4(part_path, part, f):
     # reading in all e4 data and adding a time index
     
     # check if all the data was found
@@ -292,6 +296,7 @@ def convert_e4(part_path, part):
     fl_bvp  = glob.glob(os.path.join(part_path, 'BVP.csv'))
     if len(fl_temp) + len(fl_acc) + len(fl_eda) + len(fl_bvp) != 4:
         print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + '- some or all data was missing for participant ' + part, 'bold'))
+        f.write('\n' + datetime.now().strftime("%H:%M:%S") + '- some or all data was missing for participant ' + part)
         return {}
     
     # temperature
@@ -346,7 +351,7 @@ def convert_e4(part_path, part):
         'eda'  : df_eda
     }
 
-def convert_cut(dir_path, part):
+def convert_cut(dir_path, part, f):
     # reading in cut EDA and BVP data and adding a time index
     
     # check if all the data was found
@@ -354,6 +359,7 @@ def convert_cut(dir_path, part):
     fl_bvp  = glob.glob(os.path.join(dir_path, 'BVP_' + part + '.csv'))
     if len(fl_eda) + len(fl_bvp) != 2:
         print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + '- some or all data was missing for participant ' + part, 'bold'))
+        f.write('\n' + datetime.now().strftime("%H:%M:%S") + '- some or all data was missing for participant ' + part)
         return {}
     
     # define the dateparse
@@ -381,7 +387,7 @@ def convert_cut(dir_path, part):
         'eda'  : df_eda
     }
 
-def cut_data(dict_data, tags, dir_out):
+def cut_data(dict_data, tags, dir_out, f):
     # cutting the data into blocks of interest based on the tag files
     
     # if output directory does not exist, create it
@@ -399,6 +405,7 @@ def cut_data(dict_data, tags, dir_out):
             # check if end and start values are provided
             if np.isnan(row['end']) | np.isnan(row['start']):
                 print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Either start or end value is missing.')
+                f.write('\n' + 'Skipping block ' + row['tag'] + '. Either start or end value is missing.')
                 continue
             
             # determine the start point in seconds from the beginning of the recording
@@ -408,6 +415,7 @@ def cut_data(dict_data, tags, dir_out):
                 start   = dict_data['bvp'].index[0] + pd.Timedelta(seconds=row['start'])
             else:
                 print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Start of each tag has to be either seconds or unix.')
+                f.write('\n' + 'Skipping block ' + row['tag'] + '. Start of each tag has to be either seconds or unix.')
                 continue
             
             # add buffer if necessary
@@ -436,12 +444,14 @@ def cut_data(dict_data, tags, dir_out):
                 end = row['end'] - x.total_seconds()
             else:
                 print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'End of each tag has to be duration, seconds or unix.')
+                f.write('\n' + 'Skipping block ' + row['tag'] + '. End of each tag has to be duration, seconds or unix.')
                 continue
             
             # subtract buffer from end and check if enought time left
             end = end - row['end_buffer']
             if end <= 0:
                 print(simple_colors.red('Skipping block ' + row['tag'] + '.', 'bold'), 'Duration is 0 seconds or less.')
+                f.write('\n' + 'Skipping block ' + row['tag'] + '. Duration is 0 seconds or less.')
                 continue
             
             # cut out the end point as well as
@@ -461,7 +471,7 @@ def cut_data(dict_data, tags, dir_out):
             df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
             
             # interpolate missing data and add column with interpolation info
-            df_eda, df_bvp, df_temp, df_acc = int_missing(df_eda, df_bvp, df_temp, df_acc)
+            df_eda, df_bvp, df_temp, df_acc = int_missing(df_eda, df_bvp, df_temp, df_acc, f)
             
             # add cut data frame to the lists
             dict_df_new[row['tag']] = {     
@@ -491,7 +501,7 @@ def cut_data(dict_data, tags, dir_out):
 
 ###### EDA
 
-def eda_prepro(dir_out, df_eda, part, key, winwidth, lowpass):
+def eda_prepro(dir_out, df_eda, part, key, winwidth, lowpass, f):
     # preprocessing EDA data
 
     # get sampling rate in Hz
@@ -506,6 +516,7 @@ def eda_prepro(dir_out, df_eda, part, key, winwidth, lowpass):
         else:
             data = df_eda['eda']
             print(simple_colors.red('No filtering applied.', 'bold'), 'Critical frequency must be at least half the sampling rate for smoothing to be performed.')
+            f.write('\n' + 'No filtering applied. Critical frequency must be at least half the sampling rate for smoothing to be performed.')
     else:
         data = df_eda['eda']
     
@@ -584,6 +595,10 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
     tags = pd.read_csv(tag_file)
     tags['artefact%'] = np.nan
     ls_parts = list(tags['part'].unique())
+    
+    # start writing a log file
+    log_file = tag_file[:-4] + '_log.txt'
+    f = open(log_file, "a")
 
     # remove excluded participants
     for e in exclude:
@@ -596,32 +611,35 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
         
         # print a message
         print(simple_colors.blue(datetime.now().strftime("%H:%M:%S") + ' - processing participant ' + part, 'bold'))
+        f.write('\n\n' + datetime.now().strftime("%H:%M:%S") + ' - processing participant ' + part)
 
         # read in and convert the data
         if empatica == 'e+':
 
             # convert eplus data
-            dict_data = convert_eplus(dir_path, part)
+            dict_data = convert_eplus(dir_path, part, f)
 
         elif empatica == 'e4':
 
             # convert e4 data
-            dict_data = convert_e4(os.path.join(dir_path, part), part)
+            dict_data = convert_e4(os.path.join(dir_path, part), part, f)
             
         elif empatica == 'cut':
             
             # convert the cut data
-            dict_data = convert_cut(dir_path, part)
+            dict_data = convert_cut(dir_path, part, f)
 
         # if no data was found for this participant, continue with the next one
         if len(dict_data) < 1:
             continue
 
         print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - conversion done', 'bold'))
+        f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - conversion done')
 
         # cut out the relevant blocks of data and interpolate any missing data
-        dict_data = cut_data(dict_data, tags[tags['part'] == part], dir_out)
+        dict_data = cut_data(dict_data, tags[tags['part'] == part], dir_out, f)
         print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block separation done', 'bold'))
+        f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block separation done')
 
         # loop through the blocks and preprocess the data
         for key, dict_df in dict_data.items():
@@ -637,15 +655,17 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
             if per_art < max_art:
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact detection done', 'bold'))
+                f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact detection done')
 
                 # replacing artefacts with NaNs and then interpolating them
                 df_eda, df_bvp = na_missing(dict_df['eda'], dict_df['bvp'], labels)
-                df_eda, df_bvp, [], [] = int_missing(df_eda, df_bvp, [], [])
+                df_eda, df_bvp, [], [] = int_missing(df_eda, df_bvp, [], [], f)
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done', 'bold'))
+                f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done')
 
                 # preprocess EDA and BVP data with neurokit
-                eda_prepro(dir_out, df_eda, part, key, winwidth, []) 
+                eda_prepro(dir_out, df_eda, part, key, winwidth, [], f) 
                 bvp_prepro(dir_out, df_bvp, part, key)
 
                 # simply save temp and acc, if they exist
@@ -655,9 +675,12 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
                     dict_df['acc'].to_csv(os.path.join(dir_out, part + '_' + key + '_acc.csv'))
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': preprocessing done', 'bold'))
+                f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': preprocessing done')
 
             else: 
 
                 print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': STOPPED due to ' + str(round(per_art,2)) + '% artefacts', 'bold'))
+                f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': STOPPED due to ' + str(round(per_art,2)) + '% artefacts')
                 
     tags.to_csv(tag_file[:-4] + '_prepro.csv')
+    f.close()
