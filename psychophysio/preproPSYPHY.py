@@ -648,6 +648,8 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
             if (os.path.exists(os.path.join(dir_out, part + '_' + key + '_artefacts.csv'))):
                 # load it
                 labels = pd.read_csv(os.path.join(dir_out, part + '_' + key + '_artefacts.csv'), index_col=0)
+                labels['StartTime'] = pd.to_timedelta(labels['StartTime'])
+                labels['EndTime']   = pd.to_timedelta(labels['EndTime'])
             else:
                 # detect artifacts using the EDA Explorer classifier
                 labels  = EDA_artifact_detection(dict_df, dir_out, part, key)
