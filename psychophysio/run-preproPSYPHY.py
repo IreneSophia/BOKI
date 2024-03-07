@@ -14,7 +14,7 @@ Arguments:
     dir_out    : output directory for all the results
     tag_file   : full path to tag_file containing info on file names and blocks
     empatica   : either 'e4' or 'e+'
-    exclude    : list of patterns to be excluded from preprocessing
+    exclude    : list of patterns to be excluded from preprocessing (default = [])
     winwidth   : width of the window for smoothing of EDA with Gaussian kernel (int, default = 8)
     lowpass    : lowpass filter frequency for EDA - has to be no larger than half the sample rate (int, default = 5)
     max_art    : maximum percent of artefacts when data is still preprocessed (0 - 100, default = 100/3)

@@ -589,7 +589,7 @@ def bvp_prepro(dir_out, df_bvp, part, key):
 
 ###### Run everything
 
-def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth = 8, lowpass = 5, max_art = 100/3, art_cor = True):
+def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude = [], winwidth = 8, lowpass = 5, max_art = 100/3, art_cor = True):
 
     # load the tag file containing participant IDs and block information
     tags = pd.read_csv(tag_file)
@@ -668,12 +668,11 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth = 8, l
                 if art_cor:
                     df_eda, df_bvp = na_missing(dict_df['eda'], dict_df['bvp'], labels)
                     df_eda, df_bvp, [], [] = int_missing(df_eda, df_bvp, [], [], f)
+                    print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done', 'bold'))
+                    f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done')
                 else:
                     df_eda = dict_df['eda']
                     df_bvp = dict_df['bvp']
-
-                print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done', 'bold'))
-                f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done')
 
                 # preprocess EDA and BVP data with neurokit
                 eda_prepro(dir_out, df_eda, part, key, winwidth, [], f) 
