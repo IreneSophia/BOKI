@@ -589,7 +589,7 @@ def bvp_prepro(dir_out, df_bvp, part, key):
 
 ###### Run everything
 
-def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass, max_art = 100/3):
+def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth = 8, lowpass = 5, max_art = 100/3, art_cor = True):
 
     # load the tag file containing participant IDs and block information
     tags = pd.read_csv(tag_file)
@@ -665,8 +665,12 @@ def preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpa
                 f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact detection done')
 
                 # replacing artefacts with NaNs and then interpolating them
-                df_eda, df_bvp = na_missing(dict_df['eda'], dict_df['bvp'], labels)
-                df_eda, df_bvp, [], [] = int_missing(df_eda, df_bvp, [], [], f)
+                if art_cor:
+                    df_eda, df_bvp = na_missing(dict_df['eda'], dict_df['bvp'], labels)
+                    df_eda, df_bvp, [], [] = int_missing(df_eda, df_bvp, [], [], f)
+                else:
+                    df_eda = dict_df['eda']
+                    df_bvp = dict_df['bvp']
 
                 print(simple_colors.green(datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done', 'bold'))
                 f.write('\n' + datetime.now().strftime("%H:%M:%S") + ' - block ' + key + ': artifact correction done')

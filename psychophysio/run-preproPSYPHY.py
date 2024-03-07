@@ -15,9 +15,10 @@ Arguments:
     tag_file   : full path to tag_file containing info on file names and blocks
     empatica   : either 'e4' or 'e+'
     exclude    : list of patterns to be excluded from preprocessing
-    winwidth   : width of the window for smoothing of EDA with Gaussian kernel (int)
-    lowpass    : lowpass filter frequency for EDA - has to be no larger than half the sample rate
+    winwidth   : width of the window for smoothing of EDA with Gaussian kernel (int, default = 8)
+    lowpass    : lowpass filter frequency for EDA - has to be no larger than half the sample rate (int, default = 5)
     max_art    : maximum percent of artefacts when data is still preprocessed (0 - 100, default = 100/3)
+    art_cor    : whether or not to perform artefact correction py interpolation (default = True)
 
 The function creates preprocessed data files for EDA and BVP as well as plots 
 to check the data quality. 
@@ -31,10 +32,6 @@ to check the data quality.
 import os
 from preproPSYPHY import preproPSYPHY
 
-# window width for Gaussian smoothing
-winwidth = 8 
-# lowpass filter frequency
-lowpass  = 5 
 # path to tag file
 tag_file = os.path.join(os.getcwd(), 'part_tags-short.csv')
 # path to the data directory
@@ -46,4 +43,4 @@ empatica = 'e+'
 # list of participants that should not be processed
 exclude  = []
 
-preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, winwidth, lowpass)
+preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude)
