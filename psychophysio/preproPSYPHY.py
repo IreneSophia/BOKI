@@ -556,7 +556,13 @@ def bvp_prepro(dir_out, df_bvp, part, key):
     # get sampling rate in Hz
     sr  = 1/df_bvp['sampRate'].iloc[0]
     
-    # process the data
+    # process the data following Elgendi et al. (2013)
+    # settings: 
+    #   peakwindow=0.111,
+    #   beatwindow=0.667,
+    #   beatoffset=0.02,
+    #   mindelay=0.3
+    #   minimum peak height of 0
     signals, info = nk.ppg_process(df_bvp['bvp'], sampling_rate = sr)
     
     # plot the data
