@@ -25,17 +25,20 @@ df = ls.fl %>%
 
 # PSY_BOKI_BDI 
 # (10 bis 19: leichtes depressives Syndrom, 20 bis 29: mittelgradiges, >= 30: schweres)
-df.bdi = df %>% filter(questionnaire == "PSY_BOKI_BDI")  %>%
+df.bdi = df %>% filter(questionnaire == "PSY_NEVIA_BDI")  %>%
+  ungroup() %>%
   mutate(
     numericValue = case_when(
-      "NEIN" == value ~ "0",
-      "Ja" == value ~ "1",
-      grepl(", ", numericValue, fixed = T) ~ sub(".*,", "", numericValue),
-      !grepl(", ", numericValue, fixed = T) ~ numericValue
-      ),
-    numericValue = as.numeric(numericValue)) %>%
-  select(questionnaire, SID, numericValue) %>%
-  group_by(SID) %>%
+      "NEIN" == value ~ 0,
+      "Ja"   == value ~ 1,
+      # if there are multiple answers chosen, select the highest value
+      grepl(", ", numericValue, fixed = T) ~ max(readr::parse_number(str_split(numericValue, ", ")[[1]])),
+      # if not, just convert it to a number
+      T ~ as.numeric(numericValue)
+    )
+  ) %>%
+  select(questionnaire, PID, item, numericValue) %>%
+  group_by(PID) %>%
   summarise(
     BDI_total = sum(numericValue, na.rm = T)
   )
