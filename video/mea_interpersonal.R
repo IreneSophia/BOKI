@@ -208,5 +208,3 @@ rm(list = setdiff(ls(), c("df.ccf", "mea.ccf", "df.MEA.mov_NM", "df.MEA.head_NM"
 # save workspace
 save.image(file = "MEA.Rdata")
 
-# save list of fakeMEA objects for pseudosync calculation: contains sampRate, lag, win, inc information
-saveRDS(mea.ccf, file = paste0(str_replace(getwd(), "MEA", "psync"), "/interMEA_30_5_30_15.RDS"))
