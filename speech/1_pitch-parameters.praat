@@ -10,7 +10,7 @@
 ####################################################
 
 # specify directory containing the data and the output
-folder$ = "/home/emba/Documents/ML_BOKI/Data_audio/"
+folder$ = "/media/emba/emba-2/ML_BOKI/audio_checks/"
 # please enter the file separator from your OS
 filesep$ = "/" 
 
@@ -34,10 +34,10 @@ clearinfo
 appendInfoLine: "finding pitch floor and ceiling"
 
 # print a single header line with column names
-writeFileLine: "'folder$'ML_pitch_limits.csv", "filename;floor;ceiling"
+writeFileLine: "'folder$'ML_pitch_limits.csv", "filename,floor,ceiling"
 
 # read files
-fls = Create Strings as file list... list 'folder$'ch_*.wav
+fls = Create Strings as file list... list 'folder$'*ch_*.wav
 numberOfFiles = Get number of strings
 for ifile to numberOfFiles
 
@@ -58,7 +58,7 @@ for ifile to numberOfFiles
 
     removeObject: sound
 
-    appendFileLine: "'folder$'ML_pitch_limits.csv", "'fileName$';'floor';'ceiling'"
+    appendFileLine: "'folder$'ML_pitch_limits.csv", "'fileName$','floor','ceiling'"
 
 endfor
 

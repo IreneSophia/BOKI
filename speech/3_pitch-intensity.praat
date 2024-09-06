@@ -11,7 +11,7 @@
 
 # specify directory containing the data and the output
 # this file needs to contain "ML_pitch_limits.csv"
-folder$ = "/home/emba/Documents/ML_BOKI/Data_audio/"
+folder$ = "/media/emba/emba-2/ML_BOKI/audio_checks/"
 # please enter the file separator from your OS
 filesep$ = "/" 
 
@@ -22,7 +22,7 @@ filesep$ = "/"
 # pitch settings are determined individually according to Hirst (2011)
 
 # get information about limits to calculate pitch time step
-limits = Read Table from semicolon-separated file: "'folder$'ML_pitch_limits.csv"
+limits = Read Table from comma-separated file: "'folder$'ML_pitch_limits.csv"
 selectObject: limits
 n = Get number of rows
 min_floor = Get minimum: "floor_pp"
@@ -49,7 +49,7 @@ clearinfo
 ####################################################
 
 # print a single header line with column names
-writeFileLine: "'folder$'ML_pitch_intensity.csv", "soundname;mean_pitch;sd_pitch;min_pitch;max_pitch;min_pitch_none;max_pitch_none;mean_int;sd_int;min_int;max_int;min_int_none;max_int_none"
+writeFileLine: "'folder$'ML_pitch_intensity.csv", "soundname,mean_pitch,sd_pitch,min_pitch,max_pitch,min_pitch_none,max_pitch_none,mean_int,sd_int,min_int,max_int,min_int_none,max_int_none"
 
 appendInfoLine: "extracting pitch and intensity composites"
 
@@ -87,7 +87,7 @@ for i to n
     minin = Get minimum: tmin, tmax, "None"
     maxin = Get maximum: tmin, tmax, "None"
 
-    appendFileLine: "'folder$'ML_pitch_intensity.csv", "'shortName$';'meanp';'sdp';'minp';'maxp';'minpn';'maxpn';'meani';'sdi';'mini';'maxi';'minin';'maxin'"
+    appendFileLine: "'folder$'ML_pitch_intensity.csv", "'shortName$','meanp','sdp','minp','maxp','minpn','maxpn','meani','sdi','mini','maxi','minin','maxin'"
 
     removeObject: sound, pitch, intensity
 
@@ -111,7 +111,7 @@ for i to n
     shortName$ = selected$("Sound")
     
     # print a single header line with column names
-    writeFileLine: "'folder$''shortName$'_cont.csv", "time;pitch;int"
+    writeFileLine: "'folder$''shortName$'_cont.csv", "time,pitch,int"
     
     selectObject: sound
     pitch_cont = To Pitch: tstep, floor, ceil
@@ -124,7 +124,7 @@ for i to n
         pitch = Get value at time: time, "Hertz", "linear"
         selectObject: intensity_cont
         intensity = Get value at time: time, "cubic"
-        appendFileLine: "'folder$''shortName$'_cont.csv", fixed$ (time, 3), ";", fixed$ (pitch, 3), ";", fixed$ (intensity, 3)
+        appendFileLine: "'folder$''shortName$'_cont.csv", fixed$ (time, 3), ",", fixed$ (pitch, 3), ",", fixed$ (intensity, 3)
     endfor
 
     removeObject: pitch_cont, intensity_cont, sound

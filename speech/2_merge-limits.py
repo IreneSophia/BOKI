@@ -12,11 +12,14 @@ import pandas as pd
 import os
 import math
 
-directory = "/home/emba/Documents/ML_BOKI/Data_speech/"
+directory = "/media/emba/emba-2/ML_BOKI/audio_checks/"
 
-limits = pd.read_csv(os.path.join(directory,'ML_pitch_limits.csv'),sep=';',dtype={'dirname': 'str'})
+limits = pd.read_csv(os.path.join(directory,'ML_pitch_limits.csv'),sep=',',dtype={'dirname': 'str'})
 
-limits['name_short'] = limits['filename'].str.rsplit('_',1).str[0]
+limits['name_short'] = limits['filename'].str.replace('mealplanning', '')
+limits['name_short'] = limits['name_short'].str.replace('hobbies', '')
+limits['name_short'] = limits['name_short'].str.replace('__', '_')
+limits['name_short'] = limits['name_short'].str.replace('.wav', '')
 
 ppl = limits.name_short.unique()
 
@@ -24,4 +27,4 @@ for p in ppl:
     limits.loc[limits['name_short'] == p,'floor_pp'] = math.floor(min(limits[limits['name_short'] == p]['floor']))
     limits.loc[limits['name_short'] == p,'ceiling_pp'] = math.ceil(max(limits[limits['name_short'] == p]['ceiling']))
     
-limits.to_csv(os.path.join(directory,'ML_pitch_limits.csv'),index=False,sep=';')
+limits.to_csv(os.path.join(directory,'ML_pitch_limits.csv'),index=False,sep=',')
