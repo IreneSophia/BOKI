@@ -33,14 +33,14 @@ import os
 from preproPSYPHY import preproPSYPHY
 
 # path to tag file
-tag_file = os.path.join(os.getcwd(), 'part_tags-short.csv')
+tag_file = os.path.join(os.getcwd(), 'part_E4_sel.csv')
 # path to the data directory
-dir_path = os.path.join(os.getcwd(), 'E+/1/1')
+dir_path = os.path.join(os.getcwd(), 'BOKI_e4')
 # path to the output directory
-dir_out = os.path.join(os.getcwd(), 'E+/1/1/preprocessed_data')
+dir_out = os.path.join(os.getcwd(), 'BOKI_e4/preprocessed_data')
 # which empatica version was used: 'e4' or 'e+'?
-empatica = 'e+'
+empatica = 'e4'
 # list of participants that should not be processed
 exclude  = []
 
-preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude)
+preproPSYPHY(dir_path, dir_out, tag_file, empatica, exclude, art_cor = False)
