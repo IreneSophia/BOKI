@@ -79,37 +79,49 @@ def int_missing(df_eda, df_bvp, df_temp, df_acc, f):
     
     # only process temp if it is not empty
     if len(df_temp) > 0:
-        sampRate = df_temp['sampRate'].iloc[0]
-        df_temp = df_temp.interpolate()
-        df_temp = df_temp.bfill()
-        df_temp['sampRate'] = sampRate
+        df_temp['temp'] = df_temp['temp'].interpolate()
+        df_temp['temp'] = df_temp['temp'].bfill()
     
     # only process acc if it is not empty
     if len(df_acc) > 0:
-        sampRate = df_acc['sampRate'].iloc[0]
-        df_acc = df_acc.interpolate()
-        df_acc = df_acc.bfill()
-        df_acc['sampRate'] = sampRate
-    
+        df_acc['accx'] = df_acc['accx'].interpolate()
+        df_acc['accx'] = df_acc['accx'].bfill()
+        df_acc['accy'] = df_acc['accy'].interpolate()
+        df_acc['accy'] = df_acc['accy'].bfill()
+        df_acc['accz'] = df_acc['accz'].interpolate()
+        df_acc['accz'] = df_acc['accz'].bfill()
+        
     # EDA
-    sampRate = df_eda['sampRate'].iloc[0]
-    raw    = df_eda['eda']
-    df_eda = df_eda.interpolate(method='spline', order=3)
-    df_eda = df_eda.bfill()
-    df_eda['raw'] = raw
-    df_eda['sampRate'] = sampRate
+    # first, if there is no raw column yet, then save the EDA as raw
+    if 'raw' not in df_eda.columns:
+        df_eda['raw'] = df_eda['eda']
+    # then, check if this data has been interpolated, if not, create a column 
+    # called interpolated to track whether a value has been interpolated
+    if 'interpolated' not in df_eda.columns:
+        df_eda['interpolated'] = df_eda['eda'].isna()
+    else:
+        # if it already exists, just add it together to track interpolated values
+        df_eda['interpolated'] = df_eda['interpolated'] + df_eda['eda'].isna()
+    per_eda = np.mean(df_eda['eda'].isna())
+    df_eda['eda'] = df_eda['eda'].interpolate(method='spline', order=3)
+    df_eda['eda'] = df_eda['eda'].bfill()
     
     # BVP
-    sampRate = df_bvp['sampRate'].iloc[0]
-    raw    = df_bvp['bvp']
-    df_bvp = df_bvp.interpolate()
-    df_bvp = df_bvp.bfill()
-    df_bvp['raw'] = raw
-    df_bvp['sampRate'] = sampRate
+    # first, if there is no raw column yet, then save the BVP as raw
+    if 'raw' not in df_bvp.columns:
+        df_bvp['raw'] = df_bvp['bvp']
+    # then, check if this data has been interpolated, if not, create a column 
+    # called interpolated to track whether a value has been interpolated
+    if 'interpolated' not in df_bvp.columns:
+        df_bvp['interpolated'] = df_bvp['bvp'].isna()
+    else:
+        # if it already exists, just add it together to track interpolated values
+        df_bvp['interpolated'] = df_bvp['interpolated'] + df_bvp['bvp'].isna()
+    per_bvp = np.mean(df_bvp['bvp'].isna())
+    df_bvp['bvp'] = df_bvp['bvp'].interpolate()
+    df_bvp['bvp'] = df_bvp['bvp'].bfill()
     
     # print how much was interpolated for bvp and eda
-    per_eda = np.mean(raw.isna())
-    per_bvp = np.mean(raw.isna())
     if round(per_eda, 2) == round(per_bvp, 2):
         if per_eda >= 0.2:
             print(simple_colors.red(datetime.now().strftime("%H:%M:%S") + ' - ' + str(round(per_eda*100,2)) + ' percent of data were interpolated', 'bold'))
@@ -410,7 +422,10 @@ def cut_data(dict_data, tags, dir_out, f):
             
             # determine the start point in seconds from the beginning of the recording
             if row['start_unit'] == 'unix':
-                start   = datetime.fromtimestamp(float(row['start'])/(10**(len(str(row['start']))-10)))
+                # rounded unix has to have 10 digits for it to be feasible (roughly between 2001 and 2286)
+                # however, sometimes saved in different unit, therefore, we adjust it
+                adjust = len(str(round(row['start']))) - 10
+                start   = datetime.utcfromtimestamp(float(row['start'])/(10**adjust))
             elif row['start_unit'] == 'seconds':
                 start   = dict_data['bvp'].index[0] + pd.Timedelta(seconds=row['start'])
             else:
@@ -436,7 +451,10 @@ def cut_data(dict_data, tags, dir_out, f):
             
             # figure out duration of block if not in seconds based on bvp
             if row['end_unit'] == 'unix':
-                end   = (datetime.fromtimestamp(float(row['end'])/(10**(len(str(round(row['end'])))-10))) - df_bvp.index[0]).total_seconds()
+                # rounded unix has to have 10 digits for it to be feasible (roughly between 2001 and 2286)
+                # however, sometimes saved in different unit, therefore, we adjust it
+                adjust = len(str(round(row['start']))) - 10
+                end   = (datetime.utcfromtimestamp(float(row['end'])/(10**adjust)) - df_bvp.index[0]).total_seconds()
             elif row['end_unit'] == 'duration': 
                 end = row['end']
             elif row['end_unit'] == 'seconds':
@@ -458,16 +476,20 @@ def cut_data(dict_data, tags, dir_out, f):
             if len(dict_data['temp']) > 0:
                 df_temp = df_temp[df_temp.index <
                                         (df_temp.index[0] + pd.Timedelta(seconds=end))]
+                df_temp['time'] = df_temp.index
                 df_temp.index = pd.timedelta_range(start='0S', periods=len(df_temp), freq=str(df_temp['sampRate'].iloc[0]*1000000)+'U')
             if len(dict_data['acc']) > 0:
                 df_acc  = df_acc[df_acc.index <
                                         (df_acc.index[0] + pd.Timedelta(seconds=end))]
+                df_acc['time'] = df_acc.index
                 df_acc.index  = pd.timedelta_range(start='0S', periods=len(df_acc), freq=str(df_acc['sampRate'].iloc[0]*1000000)+'U')
             df_eda  = df_eda[df_eda.index < 
                                         (df_eda.index[0] + pd.Timedelta(seconds=end))]
+            df_eda['time'] = df_eda.index
             df_eda.index  = pd.timedelta_range(start='0S', periods=len(df_eda), freq=str(df_eda['sampRate'].iloc[0]*1000000)+'U')
             df_bvp  = df_bvp[df_bvp.index < 
-                                        (df_bvp.index[0] + pd.Timedelta(seconds=end))]        
+                                        (df_bvp.index[0] + pd.Timedelta(seconds=end))] 
+            df_bvp['time'] = df_bvp.index       
             df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
             
             # interpolate missing data and add column with interpolation info
@@ -484,8 +506,10 @@ def cut_data(dict_data, tags, dir_out, f):
         else:
             # reset the index 
             df_bvp = dict_data['bvp']
+            df_bvp['time'] = df_bvp.index
             df_bvp.index  = pd.timedelta_range(start='0S', periods=len(df_bvp), freq=str(df_bvp['sampRate'].iloc[0]*1000000)+'U')
             df_eda = dict_data['eda']
+            df_eda['time'] = df_eda.index
             df_eda.index  = pd.timedelta_range(start='0S', periods=len(df_eda), freq=str(df_eda['sampRate'].iloc[0]*1000000)+'U')
             
             # then add all the data under this tag if all is selected
@@ -529,8 +553,8 @@ def eda_prepro(dir_out, df_eda, part, key, winwidth, lowpass, f):
     # combine the data frames
     signals.index = df_eda.index
     df_eda = signals.join(df_eda)
-    df_eda = df_eda.drop(['EDA_Raw', 'eda_smooth'], axis=1).rename(columns={"eda": "EDA_Raw"}, errors="raise")
-    signals = df_eda.reset_index()
+    df_eda = df_eda.drop(['EDA_Raw'], axis=1) #
+    signals = df_eda.reset_index().rename(columns={"eda": "EDA_Raw"}, errors="raise")
     
     # visualise the signals
     matplotlib.rcParams['figure.figsize'] = (100, 10)
@@ -541,7 +565,7 @@ def eda_prepro(dir_out, df_eda, part, key, winwidth, lowpass, f):
     plt.close("all") 
     
     # save data to csv
-    df_eda.rename(columns={"raw": "EDA_Raw_noint"}).to_csv(os.path.join(dir_out, part + '_' + key + '_eda_signals.csv'), index = True)
+    df_eda.to_csv(os.path.join(dir_out, part + '_' + key + '_eda_signals.csv'), index = True)
     info.pop('sampling_rate')
     info_df = pd.DataFrame.from_dict(info)
     info_df.to_csv(os.path.join(dir_out, part + '_' + key + '_eda_scr.csv'), index = True)
@@ -588,7 +612,7 @@ def bvp_prepro(dir_out, df_bvp, part, key):
     # save signals and hrv_indices to csv
     signals.index = df_bvp.index
     df_bvp = signals.join(df_bvp)
-    df_bvp.drop(['bvp'], axis=1).rename(columns={"raw": "PPG_Raw_noint"}).to_csv(os.path.join(dir_out, part + '_' + key + '_bvp_signals.csv'), index = True)
+    df_bvp.drop(['PPG_Raw'], axis=1).to_csv(os.path.join(dir_out, part + '_' + key + '_bvp_signals.csv'), index = True)
     hrv_indices.to_csv(os.path.join(dir_out, part + '_' + key + '_bvp_hrv.csv'), index = True)
     
     return 
