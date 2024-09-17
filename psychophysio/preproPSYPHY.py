@@ -223,9 +223,16 @@ def read_avro(filepath):
 def convert_eplus(dir_path, part, f):
     # reading in and converting data collected with Embrace Plus
     
-    # get list of all files of this participant
-    fls = glob.glob(os.path.join(dir_path, 'participant_data',
-                                 '*', '*', 'raw_data', 'v*', part + '*.avro'))
+    # find the path to the participant
+    sub_path = dir_path
+    for i in range(6):
+        # get list of all files of this participant
+        fls = glob.glob(os.path.join(sub_path, part, 'raw_data', 'v*', '*.avro'))
+        # check if this level contained the data
+        if len(fls) > 0:
+            break
+        else: 
+            sub_path = sub_path + '/*'
     
     # check if any data was found
     if len(fls) < 1:

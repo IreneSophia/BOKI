@@ -32,9 +32,9 @@ to check the data quality.
 import os
 from preproPSYPHY import preproPSYPHY
 
-# path to tag file
+# path to tag file > see explanation in example files
 tag_file = os.path.join(os.getcwd(), 'part_E4_sel.csv')
-# path to the data directory
+# path to the data directory > see explanation in README
 dir_path = os.path.join(os.getcwd(), 'BOKI_e4')
 # path to the output directory
 dir_out = os.path.join(os.getcwd(), 'BOKI_e4/preprocessed_data')
