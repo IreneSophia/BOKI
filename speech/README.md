@@ -19,7 +19,7 @@ The scripts start with a number indicating the order of execution:
 	- composite pitch and intensity information based on individual settings (Hirst, 2011)
 	- continuous pitch and intensity using the same parameters for all individuals
   
-Between the third and the fouth script, the uhm-o-meter should be used to extract syllable nuclei, thereby, giving information about sound and silence.
+Between the third and the fouth script, the uhm-o-meter should be used to extract syllable nuclei, thereby, giving information about sound and silence (De Jong, N.H., Pacilly, J., & Heeren, W., 2021: https://doi.org/10.1080/0969594X.2021.1951162; scripts from https://sites.google.com/view/uhm-o-meter/home).
 
 4. This python scripts transforms the praat output textgrids to csvs
 5. This R script identifies turn-based information
