@@ -59,13 +59,16 @@ def convertgrid2csv(textgridlines,textgridname):
                 csvsil += textgridname + ',' + classname + ',' + tiername + ',' + label + ',' + xmin + ',' + xmax + ',' + diff + '\n'
     return csvsil, csvsyl
 
+
+#### [!PARAMETERS TO ADJUST!] ####
+# directory for input and output
+directory = "/home/emba/Documents/ML_BOKI/Data_speech/"
+
 #-------------------------------------------------
 # Define CSV header for individual files
 
 header_silence = 'Name,TierType,TierName,Label,Start,End,Duration\n'
 header_syllable = 'Name,TierType,TierName,Number,Mark\n'
-
-directory = "/home/emba/Documents/ML_BOKI/Data_speech/"
 
 # should the output be saved individually or all together?
 sep = 1
@@ -124,8 +127,8 @@ try:
     
     if not(sep):
         print('Saving all csvs in one file: all_silence.csv and all_syllable.csv')
-        outputtext(os.path.join(directory,'ML_silence.csv'),header_silence + allcsv_silence)
-        outputtext(os.path.join(directory,'ML_syllable.csv'),header_syllable + allcsv_syllable)
+        outputtext(os.path.join(directory,'OUT_silence.csv'),header_silence + allcsv_silence)
+        outputtext(os.path.join(directory,'OUT_syllable.csv'),header_syllable + allcsv_syllable)
 
     print("Done.")
 

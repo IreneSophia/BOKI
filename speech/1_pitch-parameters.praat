@@ -9,12 +9,14 @@
 ############### Initialise settings ################
 ####################################################
 
+#### [!PARAMETERS TO ADJUST!] ####
 # specify directory containing the data and the output
-folder$ = "/media/emba/emba-2/ML_BOKI/audio_checks/"
+folder$ = "/media/emba/emba-2/ML_BOKI/AUD_preprocessed/"
+folder$ = "/home/emba/Documents/AUD_preprocessed"
 # please enter the file separator from your OS
 filesep$ = "/" 
 
-### set variables
+#### set variables
 
 # set the timestep 
 tstep = 0.015
@@ -25,6 +27,9 @@ p_floor = 50
 # set the pitch ceiling
 p_ceil  = 700
 
+# add file separator to folder
+folder$ = folder$ + filesep$
+
 clearinfo
 
 ####################################################
@@ -34,10 +39,10 @@ clearinfo
 appendInfoLine: "finding pitch floor and ceiling"
 
 # print a single header line with column names
-writeFileLine: "'folder$'ML_pitch_limits.csv", "filename,floor,ceiling"
+writeFileLine: "'folder$'OUT_pitch_limits.csv", "filename,floor,ceiling"
 
 # read files
-fls = Create Strings as file list... list 'folder$'*ch_*.wav
+fls = Create Strings as file list... list 'folder$'*.wav
 numberOfFiles = Get number of strings
 for ifile to numberOfFiles
 
@@ -58,7 +63,7 @@ for ifile to numberOfFiles
 
     removeObject: sound
 
-    appendFileLine: "'folder$'ML_pitch_limits.csv", "'fileName$','floor','ceiling'"
+    appendFileLine: "'folder$'OUT_pitch_limits.csv", "'fileName$','floor','ceiling'"
 
 endfor
 

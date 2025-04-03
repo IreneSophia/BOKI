@@ -14,3 +14,5 @@ Whether one uses E4 or E+ also affects the required data path.
 * E+: there should be a data folder which contains the downloaded participant folders containing the `raw_data` folder which in turn contains a folder, i.e., `v6`, which contains the avro files. There can be levels between that, for example, the participant folders can be nested within dyad folders. 
 
 In both cases, the tag file should contain the participant folder names in the `part` column. The path to the data folder should be used for `dir_path` in `run-preproPSYPHY.py`. 
+
+This pipeline was originally created for the BOKI project.

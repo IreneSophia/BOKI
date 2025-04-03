@@ -9,20 +9,30 @@
 ############### Initialise settings ################
 ####################################################
 
+#### [!PARAMETERS TO ADJUST!] ####
 # specify directory containing the data and the output
-# this file needs to contain "ML_pitch_limits.csv"
-folder$ = "/media/emba/emba-2/ML_BOKI/audio_checks/"
+# this file needs to contain "OUT_pitch_limits.csv"
+folder$ = "/home/emba/Documents/AUD_preprocessed/"
+folder$ = "C:\Users\NEVIA\Documents\AUD_preprocessed"
 # please enter the file separator from your OS
 filesep$ = "/" 
+filesep$ = "\"
 
-### set variables
+# start and end time point (-1 to include all)
+start = -1
+end   = -1
+
+#### set variables
+
+# add file separator to folder
+folder$ = folder$ + filesep$
 
 ## composite pitch and intensity
 
 # pitch settings are determined individually according to Hirst (2011)
 
 # get information about limits to calculate pitch time step
-limits = Read Table from comma-separated file: "'folder$'ML_pitch_limits.csv"
+limits = Read Table from comma-separated file: "'folder$'OUT_pitch_limits.csv"
 selectObject: limits
 n = Get number of rows
 min_floor = Get minimum: "floor_pp"
@@ -35,10 +45,7 @@ istep = 0.01
 p_min = 100
 
 ## continuous pitch and intensity
-
 tstep = 0.001
-tmin  = 10
-tmax  = 610
 floor = 50
 ceil  = 700
 
@@ -48,50 +55,72 @@ clearinfo
 ####   Extract pitch and intensity composites   ####
 ####################################################
 
-# print a single header line with column names
-writeFileLine: "'folder$'ML_pitch_intensity.csv", "soundname,mean_pitch,sd_pitch,min_pitch,max_pitch,min_pitch_none,max_pitch_none,mean_int,sd_int,min_int,max_int,min_int_none,max_int_none"
+if 1
 
-appendInfoLine: "extracting pitch and intensity composites"
-
-for i to n
+    # print a single header line with column names
+    writeFileLine: "'folder$'OUT_pitch_intensity.csv", "soundname,mean_pitch,sd_pitch,min_pitch,max_pitch,min_pitch_none,max_pitch_none,mean_int,sd_int,min_int,max_int,min_int_none,max_int_none"
     
-    selectObject: limits
-    fileName$ = object$[limits, i, "filename"]
-
-    appendInfoLine: fileName$
-    sound = Read from file: folder$ + fileName$
-
-    # get individual limits
-    selectObject: limits
-    p_floor = object[limits, i, "floor_pp"]
-    p_ceil = object[limits, i, "ceiling_pp"]
+    appendInfoLine: "extracting pitch and intensity composites"
     
-    # get pitch composites
-    selectObject: sound
-    shortName$ = selected$("Sound")
-    pitch = To Pitch (ac): pstep, p_floor, 4, "no", 0.03, 0.45, 0.01, 0.35, 0.14, p_ceil
-    meanp = Get mean: tmin, tmax, "Hertz"
-    sdp = Get standard deviation: tmin, tmax, "Hertz"
-    minp = Get minimum: tmin, tmax, "Hertz", "Parabolic"
-    maxp = Get maximum: tmin, tmax, "Hertz", "Parabolic"
-    minpn = Get minimum: tmin, tmax, "Hertz", "None"
-    maxpn = Get maximum: tmin, tmax, "Hertz", "None"
+    for i to n
+        
+        selectObject: limits
+        fileName$ = object$[limits, i, "filename"]
+    
+        appendInfoLine: fileName$
+        sound = Read from file: folder$ + fileName$
+    
+        # get individual limits
+        selectObject: limits
+        p_floor = object[limits, i, "floor_pp"]
+        p_ceil = object[limits, i, "ceiling_pp"]
+        
+        # selecting the sound object
+        selectObject: sound
 
-    # selecting the sound object and extracting continuous pitch and intensity
-    selectObject: sound
-    intensity = To Intensity: p_min, istep, "yes"
-    meani = Get mean: tmin, tmax, "energy"
-    sdi = Get standard deviation: tmin, tmax
-    mini = Get minimum: tmin, tmax, "Parabolic"
-    maxi = Get maximum: tmin, tmax, "Parabolic"
-    minin = Get minimum: tmin, tmax, "None"
-    maxin = Get maximum: tmin, tmax, "None"
+        # interpret start and end
+        if end == -1
+          tmax = Get end time
+        else
+          tmax = end
+        endif
+        if start == -1
+          tmin = Get start time
+        else
+          tmin = start
+        endif
+        appendInfoLine: tmin
+        appendInfoLine: tmax
 
-    appendFileLine: "'folder$'ML_pitch_intensity.csv", "'shortName$','meanp','sdp','minp','maxp','minpn','maxpn','meani','sdi','mini','maxi','minin','maxin'"
+        # extract name
+        shortName$ = selected$("Sound")
+    
+        # extracting pitch
+        pitch = To Pitch (ac): pstep, p_floor, 4, "no", 0.03, 0.45, 0.01, 0.35, 0.14, p_ceil
+        meanp = Get mean: tmin, tmax, "Hertz"
+        sdp = Get standard deviation: tmin, tmax, "Hertz"
+        minp = Get minimum: tmin, tmax, "Hertz", "Parabolic"
+        maxp = Get maximum: tmin, tmax, "Hertz", "Parabolic"
+        minpn = Get minimum: tmin, tmax, "Hertz", "None"
+        maxpn = Get maximum: tmin, tmax, "Hertz", "None"
+    
+        # extracting intensity
+        selectObject: sound
+        intensity = To Intensity: p_min, istep, "yes"
+        meani = Get mean: tmin, tmax, "energy"
+        sdi = Get standard deviation: tmin, tmax
+        mini = Get minimum: tmin, tmax, "Parabolic"
+        maxi = Get maximum: tmin, tmax, "Parabolic"
+        minin = Get minimum: tmin, tmax, "None"
+        maxin = Get maximum: tmin, tmax, "None"
+    
+        appendFileLine: "'folder$'OUT_pitch_intensity.csv", "'shortName$','meanp','sdp','minp','maxp','minpn','maxpn','meani','sdi','mini','maxi','minin','maxin'"
+    
+        removeObject: sound, pitch, intensity
+    
+    endfor
 
-    removeObject: sound, pitch, intensity
-
-endfor
+endif
 
 ####################################################
 ####   Extract pitch and intensity continuous   ####
@@ -114,10 +143,21 @@ for i to n
     writeFileLine: "'folder$''shortName$'_cont.csv", "time,pitch,int"
     
     selectObject: sound
+    # interpret start and end
+    if end == -1
+      tmax = Get end time
+    else
+        tmax = end
+    endif
+    if start == -1
+        tmin = Get start time
+    else
+        tmin = start
+    endif
     pitch_cont = To Pitch: tstep, floor, ceil
     selectObject: sound
     intensity_cont = To Intensity: p_min, tstep
-    
+ 
     for j to (tmax-tmin)/tstep
         time = tmin + j * tstep
         selectObject: pitch_cont
