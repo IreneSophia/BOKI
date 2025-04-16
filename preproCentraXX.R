@@ -3,49 +3,51 @@ library(tidyverse)
 
 # Clear global environment
 rm(list=ls())
-setwd("/home/emba/Documents/ML_BOKI/CentraXX")
+setwd("/media/emba/emba-2/ML_BOKI/demoCentraXX")
 
 # load raw data
 # columns of Interest: internalStudyMemberID, name2, code, value, section, (valueIndex), numericValue
-ls.fl = setdiff(list.files(pattern = "BOKI_.*.csv"), "BOKI_centraXX.csv")
-df = ls.fl %>%
-  map_df(~read_delim(., show_col_types = F, locale = locale(encoding = "ISO-8859-1"))) %>%
+df = c("BOKI_01-08_demo-old.csv", "BOKI_20240925.csv") %>%
+  map_df(~read_delim(., show_col_types = F, locale = locale(encoding = "UTF-8"))) %>%
   select(internalStudyMemberID, name2, code, value, section, numericValue) %>%
   filter(internalStudyMemberID != "NEVIA_test" & !is.na(name2) & substr(internalStudyMemberID,1,10) != "BOKI_Pilot") %>%
   rename("questionnaire" = "name2", 
          "item" = "code", 
-         "SID" = "internalStudyMemberID") %>%
+         "ID" = "internalStudyMemberID") %>%
   mutate(
     value = str_replace(value, ",", ";"),
     questionnaire = str_replace(questionnaire, "PSY_BOKI_DEMO_Neu", "PSY_BOKI_DEMO")
   ) %>%
-  group_by(SID) %>% distinct()
+  group_by(ID) %>% distinct()
 
 ## preprocess each questionnaire separately:
 
 # PSY_BOKI_BDI 
 # (10 bis 19: leichtes depressives Syndrom, 20 bis 29: mittelgradiges, >= 30: schweres)
-df.bdi = df %>% filter(questionnaire == "PSY_NEVIA_BDI")  %>%
+df.bdi = df %>% filter(questionnaire == "PSY_BOKI_BDI" & item != "PSY_BOKI_BDI_V")  %>%
   ungroup() %>%
   mutate(
     numericValue = case_when(
-      "NEIN" == value ~ 0,
-      "Ja"   == value ~ 1,
       # if there are multiple answers chosen, select the highest value
       grepl(", ", numericValue, fixed = T) ~ max(readr::parse_number(str_split(numericValue, ", ")[[1]])),
       # if not, just convert it to a number
       T ~ as.numeric(numericValue)
+    ),
+    # fix a mistake in CentraXX which codes one item wrong
+    numericValue = case_when(
+      item == "PSY_BOKI_BDI_F" & numericValue > 2 ~ numericValue - 1,
+      T ~ numericValue
     )
   ) %>%
-  select(questionnaire, PID, item, numericValue) %>%
-  group_by(PID) %>%
+  select(questionnaire, ID, item, numericValue) %>%
+  group_by(ID) %>%
   summarise(
     BDI_total = sum(numericValue, na.rm = T)
   )
 
 # PSY_BOKI_CFT
 df.cft = df %>% filter(questionnaire == "PSY_BOKI_CFT") %>% 
-  group_by(SID) %>%
+  group_by(ID) %>%
   select(-c(questionnaire, section, numericValue)) %>%
   rename("raw" = `value`) %>%
   mutate(
@@ -113,13 +115,34 @@ df.demo = df %>% filter(questionnaire == "PSY_BOKI_DEMO") %>%
   )
 
 df.demo = df.demo %>%
-  group_by(SID) %>% select(SID, item, value) %>%
+  group_by(ID) %>% select(ID, item, value) %>%
   distinct() %>%
-  pivot_wider(names_from = item, values_from = value)
+  pivot_wider(names_from = item, values_from = value) %>%
+  mutate(
+    gender = case_when(
+      # fill in missing gender values from database
+      ID == "BOKI_49_R" | ID == "BOKI_10_R" ~ "fem",
+      T ~ gender
+    ),
+    ASD = case_when(
+      is.na(ASD) | ASD == "0" ~ 0,
+      ID == "BOKI_35_L" ~ 0, # mistake, checked original data of participant
+      T ~ 1
+    ),
+    BPD = case_when(
+      is.na(BPD) | BPD == "0" ~ 0,
+      T ~ 1
+    ), 
+    age = case_when(
+      ID == "BOKI_49_R" ~ 24,
+      ID == "BOKI_51_L" ~ 21,
+      T ~ as.numeric(gsub("\\D", "", age))
+    )
+  )
 
 # PSY_BOKI_MWT
 df.mwt = df %>% filter(questionnaire == "PSY_BOKI_MWT") %>%
-  group_by(SID) %>% select(SID, numericValue) %>%
+  group_by(ID) %>% select(ID, numericValue) %>%
   mutate(
     numericValue = as.numeric(numericValue)
   ) %>%
@@ -129,7 +152,7 @@ df.mwt = df %>% filter(questionnaire == "PSY_BOKI_MWT") %>%
 
 # PSY_BOKI_ADC
 df.adc = df %>% filter(questionnaire == "PSY_BOKI_ADC" & (section == "Abschnitt 2" | section == "Abschnitt 3")) %>%
-  group_by(SID, section) %>%
+  group_by(ID, section) %>%
   summarise(
     numericValue = sum(as.numeric(numericValue), na.rm = T)
   ) %>%
@@ -140,16 +163,16 @@ df.adc = df %>% filter(questionnaire == "PSY_BOKI_ADC" & (section == "Abschnitt 
     "adc_p2" = `Abschnitt 3`
   ) %>%
   mutate(
-    adc_total = adc_p1 + adc_p2
+    ADC_total = adc_p1 + adc_p2
   )
 
 # BOKI_Rapport_Fragebogen
 df.rap = df %>% filter(questionnaire == "BOKI_Rapport_Fragebogen") %>%
   mutate(
     numericValue = as.numeric(numericValue)
-  ) %>% select(SID, item, numericValue) %>%
+  ) %>% select(ID, item, numericValue) %>%
   pivot_wider(values_from = numericValue, names_from = item) %>%
-  group_by(SID) %>%
+  group_by(ID) %>%
   summarise(
     rapport = RAPP_1 + RAPP2 + RAPP3 + RAPP4 + RAPP5,
     video   = RAPP6,
@@ -158,16 +181,16 @@ df.rap = df %>% filter(questionnaire == "BOKI_Rapport_Fragebogen") %>%
 
 # PSY_BOKI_SPF
 df.spf = df %>% filter(questionnaire == "PSY_BOKI_SPF") %>%
-  select(SID, numericValue, item) %>%
+  select(ID, numericValue, item) %>%
   mutate(numericValue = as.numeric(numericValue)) %>%
   pivot_wider(values_from = numericValue, names_from = item) %>%
   mutate(
     spf_e = PSY_PIPS_SPF_Q1 + PSY_PIPS_SPF_Q4 + PSY_PIPS_SPF_Q6  + PSY_PIPS_SPF_Q8,
     spf_f = PSY_PIPS_SPF_Q2 + PSY_PIPS_SPF_Q5 + PSY_PIPS_SPF_Q9  + PSY_PIPS_SPF_Q11,
     spf_p = PSY_PIPS_SPF_Q3 + PSY_PIPS_SPF_Q7 + PSY_PIPS_SPF_Q10 + PSY_PIPS_SPF_Q12,
-    spf_total = spf_e + spf_f + spf_p
+    SPF_total = spf_e + spf_f + spf_p
   ) %>%
-  select(SID, spf_e, spf_f, spf_p, spf_total)
+  select(ID, spf_e, spf_f, spf_p, SPF_total)
 
 # PSY_BOKI_BSL-23
 df.bsl = df %>% filter(questionnaire == "PSY_BOKI_BSL-23") %>%
@@ -179,11 +202,11 @@ df.bsl = df %>% filter(questionnaire == "PSY_BOKI_BSL-23") %>%
     numericValue = as.numeric(numericValue),
     section = case_when(
       item == "PSY_BOKI_BSL-23_Schieber" ~ "state",
-      substr(item,16,16) == "_" ~ "sym", 
+      substr(item,16,16) == "_" ~ "total", 
       substr(item,16,16) == "." ~ "beh"
     )
-  ) %>% select(SID, section, numericValue) %>%
-  group_by(SID, section) %>%
+  ) %>% select(ID, section, numericValue) %>%
+  group_by(ID, section) %>%
   summarise(
     BSL = sum(numericValue, na.rm = T)
   ) %>%
@@ -195,16 +218,16 @@ df.tas = df %>% filter(questionnaire == "PSY_BOKI_TAS") %>%
     item = as.numeric(gsub("PSY_BOKI_TAS_", "", item)),
     numericValue = as.numeric(numericValue)
   ) %>%
-  select(SID, item, numericValue)
+  select(ID, item, numericValue)
 
 # some need to be turned around
 idx = c(4, 5, 10, 18, 19)
 df.tas[df.tas$item %in% idx,]$numericValue = abs(df.tas[df.tas$item %in% idx,]$numericValue - 6)
 
 df.tas = df.tas %>%
-  group_by(SID) %>%
+  group_by(ID) %>%
   summarise(
-    tas_total = sum(numericValue, na.rm = T)
+    TAS_total = sum(numericValue, na.rm = T)
   )
 
 # PSY_BOKI_SMS
@@ -215,14 +238,14 @@ df.sms = df %>% filter(questionnaire == "PSY_BOKI_SMS") %>%
       value == "falsch" ~ 0
     ), 
     item = as.numeric(gsub("PSY_BOKI_SMS_", "", item))
-  ) %>% select(SID, item, numericValue)
+  ) %>% select(ID, item, numericValue)
 
 # some need to be turned around
 idx = c(1, 2, 3, 4, 9, 12, 14, 17, 20, 21, 22, 23)
 df.sms[df.sms$item %in% idx,]$numericValue = abs(df.sms[df.sms$item %in% idx,]$numericValue - 1)
 
 df.sms = df.sms %>%
-  group_by(SID) %>%
+  group_by(ID) %>%
   summarise(
     SMS_total = sum(numericValue, na.rm = T)
   )
@@ -237,21 +260,21 @@ df.aq = df %>% filter(questionnaire == "PSY_BOKI_AQ") %>%
       substr(value,1,3) == "(4)" ~ 1
     )),
     item = as.numeric(gsub("PSY_PIPS_AQ_Q", "", item))
-  ) %>% select(SID, item, numericValue)
+  ) %>% select(ID, item, numericValue)
 
 # some need to be turned around
 idx = c(2, 4, 5, 6, 7, 9, 12, 13, 16, 18, 19, 20, 21, 22, 23, 26, 33, 35, 39, 41, 42, 43, 45, 46)
 df.aq[df.aq$item %in% idx,]$numericValue = abs(df.aq[df.aq$item %in% idx,]$numericValue - 1)
 
 df.aq = df.aq %>%
-  group_by(SID) %>%
+  group_by(ID) %>%
   summarise(
-    aq_total = sum(numericValue, na.rm = T)
+    AQ_total = sum(numericValue, na.rm = T)
   )
 
 # merge all together
 ls.df = list(df.demo, df.cft, df.mwt, df.bdi, df.bsl, df.adc, df.aq, df.rap, df.sms, df.spf, df.tas)
-df.sub = ls.df %>% reduce(full_join, by = "SID") 
+df.sub = ls.df %>% reduce(full_join, by = "ID") 
 
 # add iq scores
 mwt = read_delim("MWT-norms.csv", show_col_types = F, delim = ";")
@@ -267,5 +290,52 @@ for (i in 1:nrow(df.sub)) {
     df.sub$MWT_iq[i] = mwt[(df.sub$MWT_total[i] == mwt$raw),]$iq
   }
 }
+
+# add dyad to the information
+df.sub = df.sub %>% 
+  filter(substr(ID, 1, 5) == "BOKI_") %>%
+  mutate(
+    dyad = substr(ID, 1, 7), 
+    # IQ test done on a different day due to last minute scheduling
+    CFT_iq = if_else(ID == "CID2QA6AOK", 117, CFT_iq)
+  ) 
+
+# add whether participants were used in the analysis
+df.sub = df.sub %>% 
+  filter(dyad %in% c(
+    "BOKI_08", "BOKI_10", "BOKI_13", "BOKI_14", "BOKI_15", "BOKI_16", "BOKI_17", 
+    "BOKI_19", "BOKI_24", "BOKI_25", "BOKI_26", "BOKI_27", "BOKI_28", "BOKI_29", 
+    "BOKI_34", "BOKI_36", "BOKI_37", "BOKI_40", "BOKI_42", "BOKI_43", "BOKI_49", 
+    "BOKI_50", "BOKI_51", "BOKI_53", "BOKI_54", "BOKI_57", "BOKI_58", "BOKI_59", 
+    "BOKI_61")) %>%
+  select(ID, dyad, age, gender, BPD, ASD, CFT_iq, MWT_iq, BDI_total, BSL_total,
+         ADC_total, AQ_total, SMS_total, SPF_total, TAS_total)
+
+# combine with old dataset and labels
+df.sub = rbind(df.sub, 
+               read_csv("demo_MLSPE_tt.csv") %>%
+                 mutate(
+                   gender = case_when(
+                     gender == 0 ~ 'mal', 
+                     gender == 1 ~ 'fem'
+                   )
+                 ))
+  
+# add the dyad labels
+df.sub = df.sub %>%
+  group_by(dyad) %>%
+  mutate(
+    BPD.dyad = sum(BPD),
+    ASD.dyad = sum(ASD)
+  ) %>% ungroup() %>% 
+  mutate(
+    label = case_when(
+      BPD.dyad == 0 & ASD.dyad == 0 ~ "COMP-COMP",
+      BPD.dyad == 0 & ASD.dyad == 1 ~ "ASD-COMP",
+      T ~ "BPD-COMP",
+    )
+  ) %>%
+  relocate(dyad, ID, label) %>%
+  select(-BPD.dyad, -ASD.dyad)
 
 write_csv(df.sub, file = "BOKI_centraXX.csv")
