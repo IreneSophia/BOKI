@@ -13,10 +13,8 @@
 # specify directory containing the data and the output
 # this file needs to contain "OUT_pitch_limits.csv"
 folder$ = "/home/emba/Documents/AUD_preprocessed/"
-folder$ = "C:\Users\NEVIA\Documents\AUD_preprocessed"
 # please enter the file separator from your OS
 filesep$ = "/" 
-filesep$ = "\"
 
 # start and end time point (-1 to include all)
 start = -1
@@ -81,13 +79,9 @@ if 1
         # interpret start and end
         if end == -1
           tmax = Get end time
-        else
-          tmax = end
         endif
         if start == -1
           tmin = Get start time
-        else
-          tmin = start
         endif
         appendInfoLine: tmin
         appendInfoLine: tmax
@@ -146,13 +140,9 @@ for i to n
     # interpret start and end
     if end == -1
       tmax = Get end time
-    else
-        tmax = end
     endif
     if start == -1
         tmin = Get start time
-    else
-        tmin = start
     endif
     pitch_cont = To Pitch: tstep, floor, ceil
     selectObject: sound
