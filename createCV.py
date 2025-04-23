@@ -3,7 +3,8 @@
 """
 Created on Mon Apr 21 14:25:11 2025
 
-@author: emba
+@author: original script from Mark Sen Dong 
+adjusted by Irene Sophia Plank for the BOKI project
 """
 
 import pandas as pd
