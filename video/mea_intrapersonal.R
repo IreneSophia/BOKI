@@ -17,9 +17,10 @@ library(data.table)    # setDT
 library(moments)       # kurtosis, skewness
 library(filesstrings)  # file.move
 
-# set path to partent directory of MEA and BOKI files
-dt.path = "/home/emba/Documents/ML_BOKI/"
-setwd(dt.path)
+# set path to MEA files
+dt.path = c("/media/emba/emba-2/ML_BOKI/MEA_preprocessed", 
+            "/media/emba/emba-2/ML_BOKI/OpenFace_preprocessed", 
+            "/media/emba/emba-2/ML_BOKI/ML_data")
 
 # set options
 options(datatable.fread.datatable = F)
@@ -45,44 +46,38 @@ fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
 # Read in and clean data from OpenFace ------------------------------------
 
 # lists all relevant IDs
-ls.IDs = substr(list.files(path = paste0(getwd(), "/Data_OpenFace/"), pattern = "BOKI_.*\\.csv"), 1, 11)
+df.sub = read_csv(file.path("/media/emba/emba-2/ML_BOKI/demoCentraXX", 
+                            "BOKI_centraXX.csv")) %>%
+  filter(substr(dyad, 1, 4) == "BOKI") %>%
+  select(dyad, ID, label)
+ls.inc = unique(df.sub$dyad)
+ls.IDs = c(paste0(ls.inc, "_H_L"), paste0(ls.inc, "_H_R"),
+           paste0(ls.inc, "_M_L"), paste0(ls.inc, "_M_R"))
 
-# check if there are dyads where one or more files are missing
+# check if any files are missing
 incomplete = c()
-for (d in unique(substr(ls.IDs, 1, 7))) {
-  idx = which(substr(ls.IDs, 1, 7) == d)
-  if (length(idx) != 4) {
-    warning(sprintf('Dyad %s does not have 4 files', d))
-    incomplete = c(incomplete, idx)
-  }
-}
-
-# get rid of those IDs
-ls.IDs = ls.IDs[-incomplete]
-
-# list all relevant files
-ls.fls = list.files(path = paste0(getwd(), "/Data_OpenFace/"), pattern = "BOKI_.*\\.csv", full.names = T)
-ls.fls = ls.fls[-incomplete]
-
-# check if lists are in same order
-l = nchar(paste0(getwd(), "/Data_OpenFace/"))
-for (i in 1:length(ls.fls)) { 
-  if (substr(ls.fls[i], l + 2, l + 12) != ls.IDs[i]) {
-    warning(ls.IDs[i])
+ls.fls = c() # list for all relevant files
+for (d in ls.IDs) {
+  file = file.path(dt.path[2], paste0(d, '.csv'))
+  if (!file.exists(file)) {
+    warning(sprintf('File %s does not exist', d))
+    incomplete = c(incomplete, d)
+  } else {
+    ls.fls = c(ls.fls, file)
   }
 }
 
 # reads in the data
-col.sel = c(1,3:5,294:296) # irrelevant columns
 ls      = lapply(ls.fls, fread, 
                  header = F, # preserves columns for frame number
-                 skip = 300, # skips first 10 seconds (b/c of MEA artefacts) -> one less due to diff!
+                 skip = 300, # skips first 10 seconds (b/c of MEA artefacts),
+                 nrows = 18001 # 10 minutes * 30 frames * 60 to convert to seconds
                  # timestamp, confidence, success, position (pitch, yaw, roll), 
                  # intensity and occurrence of different AUs
-                 select = col.sel) 
+                 ) 
 
 # read in header separately 
-header  = fread(ls.fls[1], header = F, nrows = 1, stringsAsFactors = F,  select = col.sel)
+header  = fread(ls.fls[1], header = F, nrows = 1, stringsAsFactors = F)
 for (i in 1:length(ls)){
   colnames(ls[[i]]) = unlist(header)
 }
@@ -97,29 +92,12 @@ for (i in 1:length(ls)){
   }
 }
 
-# check if every dataframe has 18,001 lines
+# check if every dataframe has 18,001 lines > one is lost later due to diff
 for (i in 1:length(ls)){
   if (nrow(ls[[i]]) != 18001){ 
     warning(sprintf('%s is incomplete: %i', names(ls)[i], nrow(ls[[i]])))
   }
 }
-
-# filter data based on mean confidence and successfully tracked frames 
-outlier = c()
-for (i in 1:length(ls)) {
-  if (mean(ls[[i]]$confidence) < 0.75 # mean confidence of tracked frames lower than 75%?
-      || # OR
-      sum(ls[[i]]$success) < 18001*0.9) # less than 90% of 18,000 successfully tracked?
-  { 
-    warning(sprintf('face tracking not reliable enough for %s', names(ls)[i]))
-    if (i %% 2) {out.dyad = i} else {out.dyad = i-1}
-    outlier = c(outlier, out.dyad) # add dyad numer to outliers
-  }
-}
-
-# exclude outliers and their interaction partners
-outlier = c(outlier, outlier+1)
-if (length(outlier) > 0) {ls.clean = ls[-outlier]} else {ls.clean = ls}
 
 # Create head movement vector ---------------------------------------------
 
@@ -130,40 +108,39 @@ vlength = function(x) {
 }
 
 # loop through list of dataframes 
-for (i in 1:length(ls.clean)){
+for (i in 1:length(ls)){
   # calculate frame-to-frame differences
-  ls.clean[[i]]$diff_Tx = c(NA,diff(ls.clean[[i]]$pose_Tx)) 
-  ls.clean[[i]]$diff_Ty = c(NA,diff(ls.clean[[i]]$pose_Ty))
-  ls.clean[[i]]$diff_Tz = c(NA,diff(ls.clean[[i]]$pose_Tz))
+  ls[[i]]$diff_Tx = c(NA,diff(ls[[i]]$pose_Tx)) 
+  ls[[i]]$diff_Ty = c(NA,diff(ls[[i]]$pose_Ty))
+  ls[[i]]$diff_Tz = c(NA,diff(ls[[i]]$pose_Tz))
   # delete first row of NA
-  ls.clean[[i]] = ls.clean[[i]][-1,]  
+  ls[[i]] = ls[[i]][-1,]  
   # calculate vector length
-  ls.clean[[i]]$OF.headmov = apply(ls.clean[[i]][,c("diff_Tx","diff_Ty","diff_Tz")],1,vlength)
+  ls[[i]]$OF.headmov = apply(ls[[i]][,c("diff_Tx","diff_Ty","diff_Tz")],1,vlength)
 }
 
 # convert to dataframe
-df.OF = bind_rows(ls.clean, .id = "ID") %>%
+df.OF = bind_rows(ls, .id = "ID") %>%
   separate(col = ID, into = c("dyad1", "dyad2", "task", "speaker"), remove = F) %>%
   mutate(dyad = paste(dyad1, dyad2, sep = "_"),
-         speaker = recode_factor(speaker, "R" = "BPD", "L" = "CTR"),
          ID = paste0(dyad, "_", speaker)) %>%
   select(-dyad1, -dyad2) %>%
   select(ID, dyad, task, speaker, frame, OF.headmov)
 
 # clean workspace
-rm(list = setdiff(ls(), c("df.OF", "fakeMEA")))
+rm(list = setdiff(ls(), c("df.OF", "fakeMEA", "dt.path", "df.sub")))
 
 # Read in body movement from MEA ------------------------------------------
 
-df.MEA = list.files(path = paste0(getwd(), "/Data_MEA"), 
+df.MEA = list.files(path = dt.path[1], 
                     pattern = "BOKI_.*\\.txt", full.names = T) %>%
   setNames(nm = .) %>%
-  map_df(~read_delim(.x, show_col_types = F, skip = 300,
+  map_df(~read_delim(.x, show_col_types = F, skip = 300, n_max = 18000,
                      col_names = F, col_select = c(2,4)), 
          .id = "ID") %>% 
-  rename("CTR" = "X2", "BPD" = "X4") %>%
+  rename("L" = "X2", "R" = "X4") %>%
   mutate(
-    ID = gsub(".txt", "", gsub(paste0(getwd(), "/Data_MEA/"), "", ID))
+    ID = gsub(".*preprocessed/(.+).txt", "\\1", ID)
   ) %>% 
   group_by(ID) %>%
   mutate(
@@ -174,7 +151,8 @@ df.MEA = list.files(path = paste0(getwd(), "/Data_MEA"),
     dyad = paste(dyad1, dyad2, sep = "_")
     ) %>%
   select(-dyad1, -dyad2) %>%
-  pivot_longer(names_to = "speaker", values_to = "MEA.bodymov", cols = c("CTR", "BPD")) %>%
+  filter(dyad %in% unique(df.OF$dyad)) %>%
+  pivot_longer(names_to = "speaker", values_to = "MEA.bodymov", cols = c("L", "R")) %>%
   mutate(
     ID = paste0(dyad, "_", speaker)
   )
@@ -190,7 +168,7 @@ df.MEA %>%
   filter(count != 18000)
 
 # clean workspace
-rm(list = setdiff(ls(), c("df.OF", "df.MEA", "fakeMEA")))
+rm(list = setdiff(ls(), c("df.OF", "df.MEA", "fakeMEA", "dt.path", "df.sub")))
 
 # Calculate intrapersonal synchrony ---------------------------------------
 
@@ -200,10 +178,14 @@ ls.mea = c()
 # merge both dataframes
 df = merge(df.OF, df.MEA)
 
+# save the dataframe
+saveRDS(df, file.path(dt.path[1], "BOKI_intra.rds"))
+
 # loop through participants
 sampRate = 30
 df.IA.sync = data.frame()# initialise heatmaps
-pdf(paste0(getwd(), "/Data_mixed/heatmaps_intra.pdf")) 
+pdf(file.path(dt.path[1], "heatmaps_intra.pdf")) 
+
 for (i in unique(df$ID)){
   
   ## HOBBIES
@@ -313,29 +295,32 @@ dev.off()
 df.IA.sync_NM = df.IA.sync %>%
   group_by(ID, task) %>%
   summarise(
-    IA.sync_min  = min(sync, na.rm = T),
-    IA.sync_max  = max(sync, na.rm = T),
-    IA.sync_sd   = sd(sync, na.rm = T),
-    IA.sync_mean = mean(sync, na.rm = T),
-    IA.sync_md   = median(sync, na.rm = T),
-    IA.sync_kurt = kurtosis(sync, na.rm = T),
-    IA.sync_skew = skewness(sync, na.rm = T)
+    min  = min(sync, na.rm = T),
+    max  = max(sync, na.rm = T),
+    sd   = sd(sync, na.rm = T),
+    mean = mean(sync, na.rm = T),
+    md   = median(sync, na.rm = T),
+    kurtosis = kurtosis(sync, na.rm = T),
+    skew = skewness(sync, na.rm = T)
   ) %>%
   mutate(
     dyad = substr(ID, 1, 7),
-    speaker = substr(ID, 8, 11)
+    speaker = substr(ID, 9, 9)
   ) %>%
-  relocate(ID, dyad, speaker) %>%
-  pivot_wider(names_from = "task", values_from = where(is.numeric))
+  pivot_wider(names_from = "task", values_from = where(is.numeric),
+              names_glue = "{.value}_{task}_intra") %>%
+  merge(., df.sub %>% select(ID, label)) %>%
+  relocate(ID, dyad, speaker, label)
 
 # save as csv
-write.csv(df.IA.sync_NM,"peaks_intra.csv")
+write_csv(df.IA.sync_NM, file.path(dt.path[3], "BOKI_peaks_intra_NM.csv"))
 
 # clean workspace
-rm(list = setdiff(ls(), c("df", "df.OF", "df.MEA", "df.IA.sync", "df.IA.sync_NM", "ls.mea")))
+rm(list = setdiff(ls(), c("df", "df.OF", "df.MEA", "df.IA.sync", 
+                          "df.IA.sync_NM", "ls.mea", "dt.path")))
 
 # Save workspace ----------------------------------------------------------
 
 # save workspace
-save.image(paste0(getwd(), "/Data_mixed/intra.RData"))
+save.image(file.path(dt.path[1], "intra.RData"))
 
