@@ -8,14 +8,29 @@
 # of one speaker to the other. To do so, the median pitch and intensity per turn
 # are calculated. 
 
-# Set WD and load libraries -----------------------------------------------
-
-setwd("/home/emba/Documents/ML_BOKI/Data_speech/")
-
 library(tidyverse)
 library(rMEA)
 
-source("/home/emba/Documents/ML_speech/MLSPE_scripts/fakeMEA_function.R")
+# Initialize function to create a fake MEA object out of two vectors
+# Input: 
+#     * s1, s2: numeric vectors containing the values to be correlated
+#     * sampRate: sampling rate per second
+#     * s1Name, s2Name: name for the values to be correlated, default is "s1Name" and "s2Name"
+# Output:
+#     * fake MEA object that pretends to be a MEA object
+#
+fakeMEA = function(s1, s2, sampRate, s1Name = "s1Name", s2Name = "s2Name") {
+  mea = structure(list(all_01_01 = structure(list(MEA = structure(list(
+    s1Name = s1, s2Name = s2), row.names = c(NA, -length(s1)), class = "data.frame"), 
+    ccf = NULL, ccfRes = NULL), id = "01", session = "01", group = "all", sampRate = sampRate, 
+    filter = "raw", ccf = "", s1Name = s1Name, s2Name = s2Name, uid = "all_01_01", 
+    class = c("MEA","list"))), class = "MEAlist", nId = 1L, n = 1L, groups = "all", sampRate = sampRate, 
+    filter = "raw", s1Name = s1Name, s2Name = s2Name, ccf = "")
+  return(mea)
+}
+
+dt.path = c("/media/emba/emba-2/ML_BOKI/AUD_preprocessed", 
+            "/media/emba/emba-2/ML_BOKI/ML_data")
 
 # Load data and set up output matrices ------------------------------------
 
@@ -23,11 +38,15 @@ cols = c("name", "pit_sync_MEA", "int_sync_MEA")
 df.dyad = data.frame(matrix(nrow = 0, ncol = length(cols)))
 colnames(df.dyad) = cols
 
-df.turn = read_csv("ML_turns.csv")
+df.turn = read_csv(file.path(dt.path[1], "OUT_turns.csv"))
 df.turn$name = paste(df.turn$dyad, df.turn$task, sep = "_")
 
-# get rid of turns that start in the first 10 seconds
-df.turn = df.turn %>% filter(start_turn > 10000)
+# no need to get rid of the first 10 seconds > was already cut in praat
+# but for index reasons the 0 as start time is replaced by 1
+df.turn = df.turn %>%
+  mutate(
+    start_turn = if_else(start_turn==0,1,start_turn)
+  )
 
 # Calculate average pitch and intensity -----------------------------------
 
@@ -45,17 +64,21 @@ for (i in 1:nrow(df.turn)) {
     reload = T
   }
   if (reload) {
-    fl_L = list.files(pattern = paste("^ch_L.*", df.turn$dyad[i] ,".*",
-                                      df.turn$task[i], ".*cont\\.csv$",
-                                      sep = ""))
-    fl_R = list.files(pattern = paste("^ch_R.*", df.turn$dyad[i] ,".*",
-                                      df.turn$task[i], ".*cont\\.csv$",
-                                      sep = ""))
-    df_L = read_delim(fl_L, delim = ";") %>%
+    fl_L = list.files(pattern = paste(df.turn$dyad[i] ,"_",
+                                      df.turn$task[i], "_ch_L",
+                                      ".*cont\\.csv$",
+                                      sep = ""),
+                      path = dt.path[1])
+    fl_R = list.files(pattern = paste(df.turn$dyad[i] ,"_",
+                                      df.turn$task[i], "_ch_R",
+                                      ".*cont\\.csv$",
+                                      sep = ""),
+                      path = dt.path[1])
+    df_L = read_delim(file.path(dt.path[1], fl_L), delim = ",") %>%
       mutate(across(time, ~ .x * 1000)) %>%
       mutate(across(time, round)) %>%
       mutate(across(where(is.character), as.numeric))
-    df_R = read_delim(fl_R, delim = ";") %>%
+    df_R = read_delim(file.path(dt.path[1], fl_R), delim = ",") %>%
       mutate(across(time, ~ .x * 1000)) %>%
       mutate(across(time, round)) %>%
       mutate(across(where(is.character), as.numeric))
@@ -133,6 +156,6 @@ df.indi = df.turn %>% group_by(name, speaker) %>%
 
 # Save synchronisation data frame -----------------------------------------
 
-write_csv(df.turn, "ML_turns.csv")
-write_csv(df.indi, "ML_sync-indi.csv")
-write_csv(df.dyad, "ML_sync-dyad.csv")
+write_csv(df.turn, file.path(dt.path[1], "OUT_turns.csv"))
+write_csv(df.indi, file.path(dt.path[1], "OUT_sync-indi.csv"))
+write_csv(df.dyad, file.path(dt.path[1], "OUT_sync-dyad.csv"))

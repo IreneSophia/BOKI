@@ -62,7 +62,7 @@ def convertgrid2csv(textgridlines,textgridname):
 
 #### [!PARAMETERS TO ADJUST!] ####
 # directory for input and output
-directory = "/home/emba/Documents/ML_BOKI/Data_speech/"
+directory = "/media/emba/emba-2/ML_BOKI/AUD_preprocessed/"
 
 #-------------------------------------------------
 # Define CSV header for individual files

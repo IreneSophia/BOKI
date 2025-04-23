@@ -10,32 +10,54 @@
 # uhm-o-meter per turn and based on this calculates the articulation rate of the
 # respective turn. 
 
-# Set WD and load libraries -----------------------------------------------
-
-setwd("/home/emba/Documents/ML_BOKI/Data_speech/")
-
 library(tidyverse)
+
+dt.path = c("/media/emba/emba-2/ML_BOKI/AUD_preprocessed", 
+            "/media/emba/emba-2/ML_BOKI/ML_data")
+
+
+# Get list of included dyads ----------------------------------------------
+
+# lists all relevant IDs
+df.sub = read_csv(file.path("/media/emba/emba-2/ML_BOKI/demoCentraXX", 
+                            "BOKI_centraXX.csv")) %>%
+  filter(substr(dyad, 1, 4) == "BOKI") %>%
+  select(dyad, ID, label)
+ls.inc = unique(df.sub$dyad)
+ls.IDs = c(paste0(ls.inc, "_M_ch_L"), paste0(ls.inc, "_H_ch_L"),
+           paste0(ls.inc, "_M_ch_R"), paste0(ls.inc, "_H_ch_R"))
 
 # Import silence data -----------------------------------------------------
 
-# get list of silence files
-fls = list.files(pattern = "^ch_.*_silence\\.csv$")
+# check if any silence files are missing
+incomplete = c()
+ls.fls = c() # list for all relevant files
+for (d in ls.IDs) {
+  file = file.path(dt.path[1], paste0(d, '_silence.csv'))
+  if (!file.exists(file)) {
+    warning(sprintf('File %s does not exist', d))
+    incomplete = c(incomplete, d)
+  } else {
+    ls.fls = c(ls.fls, file)
+  }
+}
+
+# no incomplete files
 
 # load all the data into one data frame
-df  = do.call("rbind", lapply(fls, read_csv, show_col_types = F))
+df  = do.call("rbind", lapply(ls.fls, read_csv, show_col_types = F))
 
 # convert to ms
 df = df %>% mutate(across(where(is.numeric), ~ .x * 1000)) %>% 
-  mutate(across(where(is.numeric), round))
-
-# split filenames
-df[c("1", "side", "dyad1", "dyad2", "left", "right", "task")] = str_split_fixed(df$Name, "_", 7)
-df$dyad = paste(df$dyad1, df$dyad2, sep = "_")
-df$task = gsub("[[:digit:]]", "", df$task)
-
-# get rid of unnecessary columns
-df = df %>% select(dyad, side, left, right, task, Label, Start, End, Duration)
-names(df)[6:9] = c("code", "xmin", "xmax", "dur")
+  mutate(across(where(is.numeric), round)) %>%
+  separate(col = Name, into = c("dyad1", "dyad2", "task", "ch", "side"), remove = T) %>%
+  mutate(
+    dyad = paste0(dyad1, "_", dyad2)
+  ) %>%
+  select(dyad, side, task, Label, Start, End, Duration) %>%
+  rename(
+    "code" = "Label", "xmin" = "Start", "xmax" = "End", "dur" = "Duration"
+  )
 
 # Turn-taking gap ---------------------------------------------------------
 
@@ -58,14 +80,14 @@ for (i in 2:nrow(df.sound)) {
 df.sound.engulfed = df.sound %>% filter(delete == T)
 df.sound = df.sound %>% filter(delete == F) %>% select(-c(delete))
 
-write_csv(df.sound.engulfed, file = "ML_engulfedsounds.csv")
+write_csv(df.sound.engulfed, file = file.path(dt.path[1], "OUT_engulfedsounds.csv"))
 
 # identify turns: here, turns are defined as starting with the first sounding
 # instance of a person until the end of the last sounding instance of this 
 # person before a non-engulfed sounding instance of another person
 df.out = df.sound %>%
   mutate(rown = row_number()) %>%             # add row number
-  group_by(side) %>%                          # group by the person speaking
+  group_by(dyad, task, side) %>%                          # group by the person speaking
   mutate(
     tn = cumsum(c(TRUE, diff(rown) > 1))      # always keep the lowest row number of this turn as turn number
   ) %>%
@@ -79,7 +101,7 @@ df.out = df.sound %>%
     end_turn   = max(xmax, na.rm = T),        # take the end of the last sounding instance
     dur = end_turn - start_turn               # compute duration of the turn
   ) %>% 
-  select(-turn) %>%
+  #select(-turn) %>%
   rename('speaker' = 'side') %>%
   arrange(dyad, task, start_turn) %>%
   group_by(dyad, task) %>%
@@ -87,11 +109,12 @@ df.out = df.sound %>%
     ttg = start_turn - lag(end_turn)
   )
 
-write_csv(df.out, file = "ML_turns.csv")
+write_csv(df.out, file = file.path(dt.path[1], "OUT_turns.csv"))
 
 # Compute nsyl per turn ---------------------------------------------------
 
-df.out = read_csv(file = "ML_turns.csv", show_col_types = F)
+df.out = read_csv(file = file.path(dt.path[1], "OUT_turns.csv"), 
+                  show_col_types = F)
 
 # create an empty column for number of syllables in each turn
 df.out = df.out %>%
@@ -100,18 +123,27 @@ df.out = df.out %>%
   ) %>%
   arrange(dyad, task, start_turn)
 
-# get list of syllable files
-fls = list.files(pattern = "^ch_.*_syllable\\.csv$")
+# check if any silence files are missing
+incomplete = c()
+ls.fls = c() # list for all relevant files
+for (d in ls.IDs) {
+  file = file.path(dt.path[1], paste0(d, '_syllable.csv'))
+  if (!file.exists(file)) {
+    warning(sprintf('File %s does not exist', d))
+    incomplete = c(incomplete, d)
+  } else {
+    ls.fls = c(ls.fls, file)
+  }
+}
 
 # load all the data into one data frame
-df  = do.call("rbind", lapply(fls, read_csv, show_col_types = F))
+df  = do.call("rbind", lapply(ls.fls, read_csv, show_col_types = F))
 
 # split filenames
-df[c("1", "side", "dyad1", "dyad2", "left", "right", "task")] = str_split_fixed(df$Name, "_", 7)
 df = df %>% 
+  separate(col = Name, into = c("dyad1", "dyad2", "task", "ch", "side"), remove = T) %>%
   mutate(
     dyad = paste(dyad1, dyad2, sep = "_"),
-    task = gsub("[[:digit:]]", "", task), 
     time = round(Number * 1000)
   ) %>%
   select(dyad, task, side, time)
@@ -133,9 +165,9 @@ for (j in 1:nrow(df)) {
 df.out = df.out %>%
   mutate(
     nsyl_turn = na_if(nsyl_turn, 0), 
-    art_turn  = (nsyl_turn * 1000) / (end_turn - start_turn) # articulation rate for turn
+    art_turn  = (nsyl_turn * 1000) / dur # articulation rate for turn
   )
 
 # Save output data frame --------------------------------------------------
 
-write_csv(df.out, "ML_turns.csv")
+write_csv(df.out, file.path(dt.path[1], "OUT_turns.csv"))

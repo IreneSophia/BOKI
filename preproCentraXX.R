@@ -297,7 +297,7 @@ df.sub = df.sub %>%
   mutate(
     dyad = substr(ID, 1, 7), 
     # IQ test done on a different day due to last minute scheduling
-    CFT_iq = if_else(ID == "CID2QA6AOK", 117, CFT_iq)
+    CFT_iq = if_else(ID == "BOKI_43_R", 117, CFT_iq)
   ) 
 
 # add whether participants were used in the analysis

@@ -9,27 +9,15 @@
 # time and the duration of the silence. It also summarises the turn-taking gaps
 # by taking the median of all turn-taking gaps for the speaker and the dyad. 
 
-# Set working directory and load libraries --------------------------------
-
-setwd("/home/emba/Documents/ML_BOKI/Data_speech/")
-
 library(tidyverse)
+
+dt.path = c("/media/emba/emba-2/ML_BOKI/AUD_preprocessed", 
+            "/media/emba/emba-2/ML_BOKI/ML_data")
 
 # Load data ---------------------------------------------------------------
 
-# list of participants with low quality of silence information
-exc.indi = readRDS("excindi.RDS")
-
-# list of dyads that include one of those participants
-exc.dyad = readRDS("excdyad.RDS")
-
 # synchronisation data - information per dyad
-df.dyad = read_csv("ML_sync-dyad.csv")
-
-# set dyads with low quality silence detection to NA
-for (e in 1:length(exc.dyad)) {
-  df.dyad[df.dyad$name == exc.dyad[e], c("pit_sync_MEA", "int_sync_MEA")] = NA
-}
+df.dyad = read_csv(file.path(dt.path[1], "OUT_sync-dyad.csv"))
 
 df.dyad[c("dyad1", "dyad2", "task")] = str_split_fixed(df.dyad$name, "_", 3)
 df.dyad$dyad = paste(df.dyad$dyad1, df.dyad$dyad2, sep = "_")
@@ -38,26 +26,22 @@ df.dyad = df.dyad %>% select(-c(name, dyad1, dyad2))
 # Pitch intensity and prosodic information --------------------------------
 
 # pitch-intensity and prosodic - information per individual
-df.pint = read_csv("ML_pitch_intensity.csv")
-df.pros = read_csv("ML_prosodic_extraction.csv")
+df.pint = read_csv(file.path(dt.path[1], "OUT_pitch_intensity.csv"))
+df.pros = list.files(path = dt.path[1], pattern = "*_prosodic_extraction.csv", full.names = T) %>%
+  map_df(~read_csv(., show_col_types = F))
 colnames(df.pros) = c("soundname", "nsyll", "npause", "dur", "pho", "spr",
-                      "art", "asd")
-
-# set participants with low quality silence detection to NA
-for (e in 1:length(exc.indi)) {
-  df.pros[df.pros$soundname == exc.indi[e], c("nsyll", "npause", "pho", "spr",
-                                          "art", "asd")] = NA
-}
+                      "art", "asd", "prepro")
 
 # merge pitch-intensity and prosodic information
-df.indi = merge(df.pint,df.pros)
+df.indi = merge(df.pint, df.pros, all.x = T)
 rm(df.pint, df.pros)
 
 # split filenames
-df.indi[c("1", "speaker", "dyad1", "dyad2", "left", "right", "task")] = 
-  str_split_fixed(df.indi$soundname, "_", 7)
-df.indi$dyad = paste(df.indi$dyad1, df.indi$dyad2, sep = "_")
-df.indi$task = gsub("[[:digit:]]", "", df.indi$task)
+df.indi = df.indi %>%
+  separate(col = soundname, into = c("dyad1", "dyad2", "task", "ch", "side"), remove = F) %>%
+  mutate(
+    dyad = paste0(dyad1, "_", dyad2)
+  ) %>% select(-dyad1, -dyad2, -ch)
 
 # calculate speech rate for dyad
 df.spr = df.indi %>% 
@@ -76,23 +60,19 @@ df.spr = df.indi %>%
 df.dyad = merge(df.dyad, df.spr)
 rm(df.spr)
 
-# get rid of unnecessary columns
-df.indi = df.indi %>% select(-"1", -dyad1, -dyad2, -soundname)
+# get rid of excluded participants
+df.indi = df.indi %>% 
+  filter(dyad %in% df.dyad$dyad)
 
 # Individual synchronisation ----------------------------------------------
 
 # load data
-df.sync = read_csv("ML_sync-indi.csv")
-
-# set dyads with one participant with low quality silence detection to NA
-for (e in 1:length(exc.dyad)) {
-  df.sync[df.sync$name == exc.dyad[e], c("pit_sync", "int_sync")] = NA
-}
-
-# adjust individual synchronisation data frame
-df.sync[c("dyad1", "dyad2", "task")] = str_split_fixed(df.sync$name, "_", 3)
-df.sync$dyad = paste(df.sync$dyad1, df.sync$dyad2, sep = "_")
-df.sync = df.sync %>% select(-c(name, dyad1, dyad2))
+df.sync = read_csv(file.path(dt.path[1], "OUT_sync-indi.csv")) %>%
+  separate(col = name, into = c("dyad1", "dyad2", "task"), remove = F) %>%
+  mutate(
+    dyad = paste0(dyad1, "_", dyad2),
+    side = speaker
+  ) %>% select(-dyad1, -dyad2)
 
 # sync data frames
 df.indi = merge(df.indi,df.sync, all.x = T)
@@ -118,13 +98,10 @@ rm(str.dyad)
 # Turn-taking gaps --------------------------------------------------------
 
 # load data
-df.turn = read_csv("ML_turns.csv")
-df.turn$name = paste(df.turn$dyad, df.turn$task, sep = "_")
-
-# set dyads with one participant with low quality silence detection to NA
-for (e in 1:length(exc.dyad)) {
-  df.turn[df.turn$name == exc.dyad[e], c("ttg")] = NA
-}
+df.turn = read_csv(file.path(dt.path[1], "OUT_turns.csv")) %>%
+  mutate(
+    name = paste0(dyad, "_", task)
+  )
 
 # summarise turn-taking gaps and number of turns
 ttg.indi = df.turn %>%
@@ -146,87 +123,44 @@ rm(ttg.indi, ttg.dyad, df.turn)
 
 # Add groups and info -----------------------------------------------------
 
+df.sub = read_csv(file.path("/media/emba/emba-2/ML_BOKI/demoCentraXX", 
+                            "BOKI_centraXX.csv")) %>%
+  filter(substr(dyad, 1, 4) == "BOKI") %>%
+  select(dyad, label, ID)
+
 df.indi = df.indi %>% 
   mutate(
     pit_var = sd_pitch^2, 
     int_var = sd_int^2,
-    subject = paste(df.indi$dyad, df.indi$speaker, sep = "_"),
-    `dyad type` = case_when(
-      left == "ASD" | right == "ASD" ~ "heterogeneous",
-      left == "TD"  & right == "TD"  ~ "homogeneous"
-    ),
-    `diagnostic status` = case_when(
-      speaker == "L" ~ left,
-      speaker == "R" ~ right
-    )
+    ID = paste(df.indi$dyad, df.indi$speaker, sep = "_")
     ) %>%
-  select(-left, -right, -speaker) %>%
-  relocate(subject, dyad, `dyad type`, `diagnostic status`, task)
+  merge(., df.sub) %>%
+  select(-side, -speaker) %>%
+  relocate(dyad, ID, label, task)
 
 # add dyad group to dyad data frame
-df.sel  = df.indi[,c("dyad","task","dyad type")] %>% distinct()
-df.dyad = merge(df.dyad, df.sel) %>%
-  relocate(dyad, `dyad type`, task)
-rm(df.sel)
+df.dyad = merge(df.dyad, df.sub %>% select(dyad, label) %>% distinct()) %>%
+  relocate(dyad, label, task)
 
 # save it all
-write_csv(df.dyad, 'ML_dyad.csv')
-write_csv(df.indi, 'ML_indi.csv')
+write_csv(df.dyad, file.path(dt.path[1], 'OUT_dyad.csv'))
+write_csv(df.indi, file.path(dt.path[1], 'OUT_indi.csv'))
 
-# Convert to JASP ---------------------------------------------------------
+# create the data frame for NM
+df.NM = merge(df.indi %>%
+                select(dyad, ID, label, task,
+                       art, npause, nsyll, pho, art_sync, int_sync, pit_sync, 
+                       int_var, pit_var), 
+              df.dyad %>% 
+                select(dyad, label, task,
+                       no_turns, str, spr, int_sync_MEA, pit_sync_MEA, ttg) %>%
+                rename_if(is.numeric, ~ paste0("dyad_", .x))
+              ) %>%
+  pivot_wider(names_from = task, values_from = where(is.numeric), 
+              names_glue = "{.value}_{task}_speech") %>%
+  mutate(
+    speaker = substr(ID, nchar(ID), nchar(ID))
+  ) %>%
+  relocate(ID, dyad, label, speaker)
 
-df.indi_JASP = df.indi %>%
-  pivot_wider(names_from = task, values_from = names(df.indi)[(which(names(df.indi) == "task")+1):ncol(df.indi)]) %>%
-  mutate( # here we add averages over task in case we need non-parametric tests
-    pit_var  = (pit_var_hobbies + pit_var_mealplanning)/2,
-    int_var  = (int_var_hobbies + int_var_mealplanning)/2,
-    art      = (art_hobbies + art_mealplanning)/2,
-    pit_sync = (pit_sync_hobbies + pit_sync_mealplanning)/2,
-    int_sync = (pit_sync_hobbies + pit_sync_mealplanning)/2,
-    art_sync = (art_sync_hobbies + art_sync_mealplanning)/2
-  )
-
-df.dyad_JASP = df.dyad %>%
-  pivot_wider(names_from = task, values_from = names(df.dyad)[(which(names(df.dyad) == "task")+1):ncol(df.dyad)]) %>%
-  mutate( # here we add averages over task in case we need non-parametric tests
-    ttg          = (ttg_hobbies + ttg_mealplanning)/2,
-    str          = (str_hobbies + str_mealplanning)/2,
-    pit_sync_MEA = (pit_sync_MEA_hobbies + pit_sync_MEA_mealplanning)/2,
-    int_sync_MEA = (pit_sync_MEA_hobbies + pit_sync_MEA_mealplanning)/2
-  )
-
-# Check variance homogeneity ----------------------------------------------
-
-# Outcomes on the level of the speaker
-ls.v = c("pit_var", "int_var", "art", "pit_sync", "int_sync", "art_sync")
-task = c("hobbies", "mealplanning")
-print('Assumption violated for:')
-for (v in ls.v) {
-  for (t in task) {
-    res = var.test(formula(paste(paste(v, t, sep = "_"), "~ `diagnostic status`")), data = df.indi_JASP)
-    if (res$p.value < 0.05) {
-      print(paste(v, t, sep = "_"))
-    }
-  }
-}
-# [1] "pit_var_hobbies"
-# [1] "pit_var_mealplanning"
-
-# Outcomes on the level of the dyad
-ls.v = c("ttg", "str", "pit_sync_MEA", "int_sync_MEA")
-task = c("hobbies", "mealplanning")
-print('Assumption violated for:')
-for (v in ls.v) {
-  for (t in task) {
-    res = var.test(formula(paste(paste(v, t, sep = "_"), "~ `dyad type`")), data = df.dyad_JASP)
-    if (res$p.value < 0.05) {
-      print(paste(v, t, sep = "_"))
-    }
-  }
-}
-# None.
-
-# Save merged csv files ---------------------------------------------------
-
-write_csv(df.dyad_JASP, 'ML_dyad_JASP.csv')
-write_csv(df.indi_JASP, 'ML_indi_JASP.csv')
+write_csv(df.NM, file.path(dt.path[2], 'BOKI_speech_NM.csv'))
