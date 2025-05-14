@@ -1,0 +1,13 @@
+#!/bin/bash
+
+while ! [ -f "/media/emba/emba-2/ML_BOKI/OpenFace_preprocessed/BOKI_sync_cross.RData" ];
+do 
+
+	Rscript openface_interpersonal-cross.R
+	
+done
+
+sleep 43200
+
+/sbin/shutdown -h now
+

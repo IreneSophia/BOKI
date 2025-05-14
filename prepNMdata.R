@@ -81,7 +81,17 @@ df.plank = read_csv(file.path(dt.path, "ML_indi_context.csv")) %>%
 
 df.prev = merge(df.koehler, df.plank)
 
-df.all = rbind(df.prev, df) %>%
+df.all = rbind(df.prev, df)
+
+# 3. ADD NEW CROSS FEATURES -----------------------------------------------
+
+ls.df = list(read_csv(file.path(dt.path, "BOKI_FE_synccross_NM.csv"), show_col_types = F),
+             read_csv(file.path(dt.path, "BOKI_cross.csv"), show_col_types = F))
+
+df.new = ls.df %>% reduce(full_join, by = c("ID", "dyad", "speaker", "label")) %>%
+  select(-speaker)
+
+df.all = merge(df.all, df.new) %>%
   mutate(
     labelNo = as.numeric(as.factor(label))
   ) %>% 
@@ -92,24 +102,6 @@ df.all = rbind(df.prev, df) %>%
     label, ID
   )
 
-
-# 3. EXPORT ---------------------------------------------------------------
+# 4. EXPORT ---------------------------------------------------------------
 
 write_csv(df.all, file.path(dt.path, "BOKI_NM_inputdata.csv"))
-
-
-# 4. CORRELATION PLOTS OF FEATURES ----------------------------------------
-
-FE_sync_complete    = df.all[,grepl("AU",colnames(df.all))]
-head_sync_complete  = df.all[,grepl("headsync",colnames(df.all)) | grepl("pose_R",colnames(df.all))]
-body_sync_complete  = df.all[,grepl("bodysync",colnames(df.all))]
-intra_sync_complete = df.all[,grepl("bodysync",colnames(df.all))]
-total_sync_complete = df.all[,grepl("total_movement",colnames(df.all)) | grepl("intensity",colnames(df.all))]
-speech_complete     = df.all[,grepl("speech",colnames(df.all))]
-
-heatmap(cor(FE_sync_complete),    Colv = NA, Rowv = NA)
-heatmap(cor(head_sync_complete),  Colv = NA, Rowv = NA)
-heatmap(cor(body_sync_complete),  Colv = NA, Rowv = NA)
-heatmap(cor(intra_sync_complete), Colv = NA, Rowv = NA)
-heatmap(cor(total_sync_complete), Colv = NA, Rowv = NA)
-heatmap(cor(speech_complete),     Colv = NA, Rowv = NA)

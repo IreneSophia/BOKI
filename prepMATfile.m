@@ -9,8 +9,11 @@ ID = table2cell(alldata(:,"ID"));
 label = table2array(alldata(:,"label"));
 
 % Facial expression synchrony
-f1 = table2array(alldata(:,contains(alldata.Properties.VariableNames,'AU')));
-n1 = alldata(:,contains(alldata.Properties.VariableNames,'AU')).Properties.VariableNames;
+idx = contains(alldata.Properties.VariableNames,'_AU') & ...
+    ~contains(alldata.Properties.VariableNames,'self') & ...
+    ~contains(alldata.Properties.VariableNames,'other');
+f1 = table2array(alldata(:,idx));
+n1 = alldata(:,idx).Properties.VariableNames;
 
 % head movement synchrony
 f2 = table2array(alldata(:,contains(alldata.Properties.VariableNames,["headsync","Rx","Ry","Rz"])));
@@ -31,6 +34,14 @@ n5 = alldata(:,contains(alldata.Properties.VariableNames,["movement","intensity"
 % speech
 f6 = table2array(alldata(:,contains(alldata.Properties.VariableNames,"speech")));
 n6 = alldata(:,contains(alldata.Properties.VariableNames,"speech")).Properties.VariableNames;
+
+% cross facesync
+f7 = table2array(alldata(:,contains(alldata.Properties.VariableNames,"FX_")));
+n7 = alldata(:,contains(alldata.Properties.VariableNames,"FX_")).Properties.VariableNames;
+
+% cross turns
+f8 = table2array(alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])));
+n8 = alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])).Properties.VariableNames;
 
 % covariates
 cov  = table2array(alldata(:,["acc","rt"]));
