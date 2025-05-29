@@ -158,4 +158,4 @@ cv.class = class_cv2;
 cv.cvin = cv1_all;
 cv.classnew = class_new_cv2;
 
-save([folder filesep 'CVstruct_BOKI_ovo.mat'], 'cv')
+save([folder filesep 'BOKI_classifier' filesep 'CVstruct_BOKI_ovo.mat'], 'cv')
