@@ -3,7 +3,9 @@
 clearvars
 
 %% Data input
-alldata = readtable('/media/emba/emba-2/ML_BOKI/ML_data/BOKI_NM_inputdata.csv','PreserveVariableNames',true);
+name = 'BOKI_NM_inputdata_indi';
+alldata = readtable(['/media/emba/emba-2/ML_BOKI/ML_data/' name '.csv'],...
+    'PreserveVariableNames',true);
 
 ID = table2cell(alldata(:,"ID"));
 label = table2array(alldata(:,"label"));
@@ -35,19 +37,11 @@ n5 = alldata(:,contains(alldata.Properties.VariableNames,["movement","intensity"
 f6 = table2array(alldata(:,contains(alldata.Properties.VariableNames,"speech")));
 n6 = alldata(:,contains(alldata.Properties.VariableNames,"speech")).Properties.VariableNames;
 
-% cross facesync
-f7 = table2array(alldata(:,contains(alldata.Properties.VariableNames,"FX_")));
-n7 = alldata(:,contains(alldata.Properties.VariableNames,"FX_")).Properties.VariableNames;
-
 % cross turns
-f8 = table2array(alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])));
-n8 = alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])).Properties.VariableNames;
-
-% covariates
-cov  = table2array(alldata(:,["acc","rt"]));
-covn = alldata(:,["acc","rt"]).Properties.VariableNames;
+f7 = table2array(alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])));
+n7 = alldata(:,contains(alldata.Properties.VariableNames,["self_","other_"])).Properties.VariableNames;
 
 %% save NM structure
-save('/media/emba/emba-2/ML_BOKI/NeuroMiner/BOKI_NM_inputdata.mat');
+save(['/media/emba/emba-2/ML_BOKI/NeuroMiner/BOKI_classifier/' name '.mat']);
 
 
