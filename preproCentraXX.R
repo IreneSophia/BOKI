@@ -24,10 +24,18 @@ df = c("BOKI_01-08_demo-old.csv", "BOKI_20240925.csv") %>%
 
 # PSY_BOKI_BDI 
 # (10 bis 19: leichtes depressives Syndrom, 20 bis 29: mittelgradiges, >= 30: schweres)
-df.bdi = df %>% filter(questionnaire == "PSY_BOKI_BDI" & item != "PSY_BOKI_BDI_V")  %>%
+df.bdi = df %>% filter(questionnaire == "PSY_BOKI_BDI") %>% 
+  group_by(ID) %>%
+  mutate(
+    PSY_BOKI_BDI_V = if_else(value == "JA", 1, 0),
+    PSY_BOKI_BDI_V = sum(PSY_BOKI_BDI_V, na.rm = T)
+  ) %>%
+  filter(item != "PSY_BOKI_BDI_V") %>%
   ungroup() %>%
   mutate(
     numericValue = case_when(
+      # if they answered deliberate weight loss with yes, ignore item S
+      item == "PSY_BOKI_BDI_S" & PSY_BOKI_BDI_V == 1 ~ 0,
       # if there are multiple answers chosen, select the highest value
       grepl(", ", numericValue, fixed = T) ~ max(readr::parse_number(str_split(numericValue, ", ")[[1]])),
       # if not, just convert it to a number
