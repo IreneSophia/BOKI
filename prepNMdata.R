@@ -43,17 +43,28 @@ df.bert = list.files(path = "/media/emba/emba-2/ML_BOKI/BERT_raw",
   )
 
 # merge together
-df = merge(df, df.bert, all.x = T)
+df = merge(df, df.bert, all.x = T) %>%
+  mutate(
+    ilabel = case_when(
+      label == "BPD-COMP" & substr(ID, nchar(ID), nchar(ID)) == "R" ~ "BPD",
+      T ~ "COMP"
+    )
+  ) %>%
+  relocate(ID, dyad, label, ilabel)
 
 # 2. MERGE WITH DATA FROM KOEHLER 2024 & PLANK 2023  ----------------------
 
 df.koehler = read_csv(file.path(dt.path, "TIDY_NM_inputdata.csv")) %>%
-  select(-`...1`, -label, -indclasslabel) %>%
+  select(-`...1`, -label) %>% # HERE INDIVIDUAL
   mutate(
     dyad  = substr(ID, 1,6),
     label = case_match(dyadclasslabel,
                        "ASD-TD" ~ "ASD-COMP",
                        "TD-TD"  ~ "COMP-COMP"),
+    ilabel = case_when(
+      indclasslabel == "TD" ~ "COMP",
+      T ~ indclasslabel
+    ),
     ID = paste0(dyad, substr(ID, nchar(ID)-1, nchar(ID)))
   ) %>%
   # rename the tasks to H and M consistently
@@ -61,8 +72,8 @@ df.koehler = read_csv(file.path(dt.path, "TIDY_NM_inputdata.csv")) %>%
   rename_with(~ gsub("mealplanning", "M", .x)) %>%
   rename_with(~ gsub("_h$", "_H", .x)) %>%
   rename_with(~ gsub("_mp$", "_M", .x)) %>%
-  select(-dyadclasslabel) %>%
-  relocate(ID, dyad, label)
+  select(-dyadclasslabel, -indclasslabel) %>%
+  relocate(ID, dyad, label, ilabel)
 
 df.plank = read_csv(file.path(dt.path, "ML_indi_context.csv")) %>%
   rename("ID" = "Id") %>%
@@ -94,14 +105,23 @@ df.new = ls.df %>% reduce(full_join, by = c("ID", "dyad", "speaker", "label")) %
 df.all = merge(df.all, df.new) %>%
   mutate(
     labelNo = as.numeric(as.factor(label))
-  ) %>% 
+  )
+
+
+# 6. ADD DEMOGRAPHICS -----------------------------------------------------
+
+df.all = merge(read_csv(file.path(gsub("ML_data", "demoCentraXX", dt.path), 
+                                  "BOKI_centraXX.csv"), show_col_types = F) %>%
+                 mutate(
+                   ID = gsub("TD_", "", gsub("ASD_", "", ID))
+                 ), df.all) %>% 
   relocate(
-    ID, dyad, label, labelNo
+    ID, dyad, label, labelNo, ilabel
   ) %>%
   arrange(
     label, ID
   )
 
-# 4. EXPORT ---------------------------------------------------------------
+# 5. EXPORT ---------------------------------------------------------------
 
 write_csv(df.all, file.path(dt.path, "BOKI_NM_inputdata.csv"))
