@@ -96,10 +96,7 @@ df.all = rbind(df.prev, df)
 
 # 3. ADD NEW CROSS FEATURES -----------------------------------------------
 
-ls.df = list(read_csv(file.path(dt.path, "BOKI_FE_synccross_NM.csv"), show_col_types = F),
-             read_csv(file.path(dt.path, "BOKI_cross.csv"), show_col_types = F))
-
-df.new = ls.df %>% reduce(full_join, by = c("ID", "dyad", "speaker", "label")) %>%
+df.new = read_csv(file.path(dt.path, "BOKI_cross.csv"), show_col_types = F) %>%
   select(-speaker)
 
 df.all = merge(df.all, df.new) %>%
@@ -107,8 +104,7 @@ df.all = merge(df.all, df.new) %>%
     labelNo = as.numeric(as.factor(label))
   )
 
-
-# 6. ADD DEMOGRAPHICS -----------------------------------------------------
+# 4. ADD DEMOGRAPHICS -----------------------------------------------------
 
 df.all = merge(read_csv(file.path(gsub("ML_data", "demoCentraXX", dt.path), 
                                   "BOKI_centraXX.csv"), show_col_types = F) %>%
