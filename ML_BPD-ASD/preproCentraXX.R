@@ -1,5 +1,6 @@
 # Load packages 
 library(tidyverse)
+library(readxl)
 
 # Clear global environment
 rm(list=ls())
@@ -317,17 +318,27 @@ df.sub = df.sub %>%
     "BOKI_50", "BOKI_51", "BOKI_53", "BOKI_54", "BOKI_57", "BOKI_58", "BOKI_59", 
     "BOKI_61")) %>%
   select(ID, dyad, age, gender, BPD, ASD, CFT_iq, MWT_iq, BDI_total, BSL_total,
-         ADC_total, AQ_total, SMS_total, SPF_total, TAS_total)
+         ADC_total, AQ_total, SMS_total, SPF_total, TAS_total,
+         rapport, video)
 
 # combine with old dataset and labels
+df.speech = read_csv("demo_MLSPE_tt.csv") %>%
+  mutate(
+    gender = case_when(
+      gender == 0 ~ 'mal', 
+      gender == 1 ~ 'fem'
+    )
+  )
+df.rapport = read_excel("rapport_corona_raw.xlsx") %>%
+  group_by(ID) %>%
+  summarise(
+    rapport = Sympathie + Freundlichkeit + Wohlbefinden + Reibungslosigkeit + Interaktion,
+    video   = Videoeinfluss,
+    plexi   = Plexiglas
+  )
+
 df.sub = rbind(df.sub, 
-               read_csv("demo_MLSPE_tt.csv") %>%
-                 mutate(
-                   gender = case_when(
-                     gender == 0 ~ 'mal', 
-                     gender == 1 ~ 'fem'
-                   )
-                 ))
+               merge(df.speech, df.rapport))
   
 # add the dyad labels
 df.sub = df.sub %>%
